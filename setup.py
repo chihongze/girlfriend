@@ -21,7 +21,7 @@ install_requires = [
 setuptools.setup(
     name="girlfriend",
     version=VERSION,
-    author="Sam Chi",
+    author="ChiHongze",
     author_email="chihongze@gmail.com",
     description=(
         "A pure Python girlfriend "

@@ -69,12 +69,146 @@ gf_gen -t :workflow -f myworflow.py
 会看到目录下多了一个myworkflow.py的文件，内容如下：
 
 ```
+# coding: utf-8
+
+"""
+Docs goes here
+"""
+
+from girlfriend.workflow.gfworkflow import Job, Decision
+from girlfriend.plugin.orm import Query, SQL
+from girlfriend.data.table import TableWrapper
+from girlfriend.plugin.excel import SheetW
+
+
+logger = None
+logger_level = "info"
+
+
+def workflow(options):
+    work_units = (
+        # orm_query
+        Job(
+            name="orm_query",
+            plugin="orm_query",
+            args=[
+                Query(
+                    engine_name="",
+                    variable_name="",
+                    query_items="",
+                    query=None,
+                    order_by=None,
+                    group_by=None,
+                    params=None,
+                    row_handler=None,
+                    result_wrapper=TableWrapper(
+                        "table_name",
+                        titles=[]
+                    )
+                ),
+                SQL(
+                    engine_name="",
+                    variable_name="",
+                    sql="",
+                    params=None,
+                    row_handler=None,
+                    result_wrapper=TableWrapper(
+                        "table_name",
+                        titles=[]
+                    )
+                ),
+            ]
+        ),
+        # print_table
+        Job(
+            name="print_table",
+            plugin="print_table",
+            args=[
+                "$table1",
+                "$table2",
+            ]
+        ),
+        # write_excel
+        Job(
+            name="write_excel",
+            plugin="write_excel",
+            args={
+                "filepath": "filepath",
+                "sheets": (
+                    SheetW(
+                        table=None,
+                        sheet_name=None,
+                        style=None,
+                        sheet_handler=None
+                    ),
+                ),
+                "workbook_handler": None
+            }
+        ),
+
+    )
+
+    return work_units
 
 ```
 
 接下来我们只需要去掉一些不需要的代码，然后替换一些参数的值即可：
 
 ```
+# coding: utf-8
+
+"""
+Docs goes here
+"""
+
+from girlfriend.workflow.gfworkflow import Job
+from girlfriend.plugin.orm import SQL
+from girlfriend.data.table import TableWrapper
+from girlfriend.plugin.excel import SheetW
+
+
+logger = None
+logger_level = "info"
+
+
+def workflow(options):
+    work_units = (
+        # orm_query
+        Job(
+            name="orm_query",
+            plugin="orm_query",
+            args=[
+                SQL(
+                    engine_name="test",
+                    variable_name="user_table",
+                    sql="select id, name, email from user",
+                    result_wrapper=TableWrapper(
+                        u"用户表",
+                        titles=["id", u"ID", "name", u"姓名", "email", u"邮箱"]
+                    )
+                ),
+            ]
+        ),
+        # print_table
+        Job(
+            name="print_table",
+            plugin="print_table",
+            args=["$user_table"]
+        ),
+        # write_excel
+        Job(
+            name="write_excel",
+            plugin="write_excel",
+            args={
+                "filepath": "users.xlsx",
+                "sheets": (SheetW("user_table"),),
+            }
+        ),
+
+    )
+
+    return work_units
+
 ```
 
 <b>S5. </b> 保存对myworkflow.py的修改后，运行最后一条命令：
