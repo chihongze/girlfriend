@@ -60,7 +60,7 @@ def gen_config_file(file_path):
 
 def gen_home_workspace():
     Dir(".gf", elements=(
-        File("gf.cfg", content=config.CONFIG_EXAMPLE)
+        File("gf.cfg", content=config.CONFIG_EXAMPLE),
     )).makeme(os.environ["HOME"])
 
 if __name__ == "__main__":
