@@ -173,35 +173,35 @@ logger_level = "info"
 
 def workflow(options):
     work_units = (
-        # orm_query
+        # 第一个工作流单元，从sqlite读取数据
         Job(
             name="orm_query",
             plugin="orm_query",
             args=[
                 SQL(
-                    engine_name="test",
-                    variable_name="user_table",
-                    sql="select id, name, email from user",
-                    result_wrapper=TableWrapper(
+                    engine_name="test",  # 使用的数据源名称，即前面配置"db_test"中的test
+                    variable_name="user_table",  # 工作流通过上下文来传递数据，这个是用于保存结果的上下文变量名
+                    sql="select id, name, email from user",  # 要执行的SQL语句
+                    result_wrapper=TableWrapper(  # 结果适配器，将数据库查询结果包装成一个Table对象
                         u"用户表",
                         titles=["id", u"ID", "name", u"姓名", "email", u"邮箱"]
                     )
                 ),
             ]
         ),
-        # print_table
+        # 第二个工作流单元，将前者产生的Table对象打印到终端
         Job(
             name="print_table",
             plugin="print_table",
-            args=["$user_table"]
+            args=["$user_table"]  # 参数接受多个Table对象名，可以一次打印多个表格
         ),
-        # write_excel
+        # 第三个工作流单元，输出Excel
         Job(
             name="write_excel",
             plugin="write_excel",
             args={
-                "filepath": "users.xlsx",
-                "sheets": (SheetW("user_table"),),
+                "filepath": "users.xlsx",  # 输出Excel文件路径
+                "sheets": (SheetW("user_table"),),  # 描述该Excel文件中所包含的Sheet
             }
         ),
 
@@ -219,7 +219,7 @@ gf_workflow -m myworkflow.py
 
 大功告成！看看数据打印出来了没有？Excel生成了没有？另外，重点是，完成这个工作用了几分钟？相比过去要少写多少代码？:)
 
-如果你好奇这一切是如何发生的，那么请仔细阅读下面的教程，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器以及如何根据自己的业务来扩展这些组件。
+如果你好奇这一切是如何发生的，那么请仔细阅读下面的教程，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器以及如何根据自己的业务来扩展这些组件。当然你也可以盯着上面的代码，猜一猜它是怎么工作的，然后再去看代码验证一下，这样学习起来更有意思。
 
 ## 教程
 
