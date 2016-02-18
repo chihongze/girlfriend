@@ -5,16 +5,17 @@ import setuptools
 from girlfriend import VERSION
 
 install_requires = [
-    "SQLAlchemy",
+    "SQLAlchemy >= 1.0.9",
     "prettytable",
     "httpretty",
     "ujson",
-    "termcolor",
-    "requests",
-    "fixtures",
-    "stevedore",
-    "XlsxWriter",
-    "xlrd",
+    "termcolor >= 1.1.0",
+    "requests >= 2.7.0",
+    "fixtures >= 1.4.0",
+    "stevedore >= 1.7.0",
+    "XlsxWriter >= 0.8.4",
+    "xlrd >= 0.9.3",
+    "autopep8 >= 1.2.1"
 ]
 
 setuptools.setup(
