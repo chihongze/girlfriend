@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# IDEA
+.idea
+
+# Mac OS
+.DS_Store
+
 # C extensions
 *.so
 
