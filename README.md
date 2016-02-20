@@ -72,7 +72,7 @@ gf_gen -t :workflow -f myworflow.py
 ```
 会看到目录下多了一个myworkflow.py的文件，内容如下：
 
-```
+```python
 # coding: utf-8
 
 """
@@ -158,7 +158,7 @@ def workflow(options):
 
 接下来我们只需要去掉一些不需要的代码，然后替换一些参数的值即可：
 
-```
+```python
 # coding: utf-8
 
 """
