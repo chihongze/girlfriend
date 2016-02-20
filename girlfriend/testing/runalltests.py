@@ -12,7 +12,15 @@ excludes = {
 
 
 def main():
-    test_modules = [""]
+    test_modules = [
+        "", "--with-coverage",
+        (
+            "--cover-package="
+            "girlfriend.workflow,"
+            "girlfriend.data,"
+            "girlfriend.util"
+        ),
+    ]
     for importer, modname, ispkg in pkgutil.walk_packages(
             path=girlfriend.testing.__path__,
             prefix="girlfriend.testing."):
