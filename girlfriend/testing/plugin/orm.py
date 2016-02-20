@@ -32,7 +32,7 @@ from girlfriend.data.table import TableWrapper, Title
 class EngineManagerTestCase(GirlFriendTestCase):
 
     def setUp(self):
-        self.test_db_file = "{}/gftest.db".format(os.environ["HOME"])
+        self.test_db_file = "/tmp/gftest.db"
         connection_url = "sqlite:///{}".format(self.test_db_file)
         self.config = Config({
             "db_test": {
