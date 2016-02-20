@@ -12,6 +12,7 @@ import os
 import sys
 import argparse
 from girlfriend.util.module import load_module
+from girlfriend.util.cmdargs import print_help
 from girlfriend.util.script import show_msg_and_exit
 
 
@@ -25,6 +26,9 @@ def main():
     tpl_options = None
     tpl_cmd_parser = getattr(tpl_module, "cmd_parser", None)
     if tpl_cmd_parser is not None:
+        if options.show_args:
+            print_help(tpl_cmd_parser)
+            return
         tpl_options = tpl_cmd_parser.parse_known_args(sys.argv[1:])[0]
 
     tpl_module.gen(options.path, tpl_options)
