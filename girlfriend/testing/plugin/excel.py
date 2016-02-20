@@ -79,7 +79,7 @@ class ExcelWriterPluginTestCase(GirlFriendTestCase):
             sheet.insert_chart("A6", chart)
 
         path = excel_writer.execute(
-            ctx, os.path.expanduser("~/Desktop/hehe2.xlsx"),
+            ctx, os.path.expanduser("~/hehe2.xlsx"),
             sheets=(
                 SheetW(
                     self.students_table, style=[
