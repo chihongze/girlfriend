@@ -58,7 +58,7 @@ class ExcelWriterPluginTestCase(GirlFriendTestCase):
 
         # write to StringIO
         excel_writer.execute(
-            ctx, "$students_xlsx",
+            ctx, "memory:students_xlsx",
             sheets=(SheetW(self.students_table),)
         )
         book_buffer = ctx["students_xlsx"]
@@ -94,7 +94,7 @@ class ExcelWriterPluginTestCase(GirlFriendTestCase):
 
         # write sequence
         excel_writer.execute(
-            ctx, "$students_xlsx",
+            ctx, "memory:students_xlsx",
             sheets=(SheetW(self.students_list, sheet_name="std"),))
         book_buffer = ctx["students_xlsx"]
         book_buffer.seek(0)

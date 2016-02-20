@@ -10,9 +10,6 @@
    Decision    决策单元，当工作流有多个逻辑分支时
                对上一步的执行结果进行判断，决定接下来运行的Job
 
-   WaitingFor  等待单元,等待某个条件到达再继续执行接下来的工作,
-               比如某个时间点,某个队列消息,某个文件变更等等
-
    End         任务结束点，携带执行状态和最终返回结果
 
    Context     上下文对象，用于在工作流的不同Job之间传递数据
@@ -88,18 +85,6 @@ class AbstractDecision(WorkflowUnit):
     @property
     def unittype(self):
         return "decision"
-
-
-class AbstractWaitingFor(WorkflowUnit):
-
-    """等待单元
-    """
-
-    __metaclass__ = ABCMeta
-
-    @property
-    def unittype(self):
-        return "waiting_for"
 
 
 class End(WorkflowUnit):

@@ -395,7 +395,7 @@ class Workflow(AbstractWorkflow):
             self._execute_listeners("on_unit_start", ctx, listener_objects)
 
             try:
-                if current_unit.unittype in ("job", "waiting_for"):
+                if current_unit.unittype == "job":
                     last_result = current_unit.execute(ctx)
                     goto = current_unit.goto
                 elif current_unit.unittype == "decision":
