@@ -3,23 +3,26 @@
 """工作流模板
 """
 
-import re
-import cmd
-import types
-import os.path
 import argparse
-from termcolor import colored
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty
-)
-import pkg_resources
+import cmd
+import os.path
+import re
+import types
+from abc import ABCMeta, abstractmethod, abstractproperty
+
 import autopep8
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import PythonLexer
+from termcolor import colored
+
+import pkg_resources
 
 cmd_parser = argparse.ArgumentParser(description=__doc__.decode("utf-8"))
 cmd_parser.add_argument("--file-name", "-f", dest="file_name",
                         default="workflow.py", help=u"工作流文件名称")
+cmd_parser.add_argument("--no-highlight", dest="no_highlight",
+                        action="store_true", help=u"显示时取消代码高亮")
 
 
 class CodeTemplate(object):
@@ -186,12 +189,13 @@ load_plugin_code_meta()
 
 class WorkflowGenerator(cmd.Cmd):
 
-    def __init__(self, file_name):
+    def __init__(self, file_name, options):
         cmd.Cmd.__init__(self)
         self.units = []
         self.file_name = file_name
         self.env_list = []  # 运行环境列表
         self.cmd_parser = False
+        self.options = options
 
     def do_plugin_job(self, line):
         """
@@ -371,7 +375,10 @@ class WorkflowGenerator(cmd.Cmd):
         """Show me the code!
         """
         code = autopep8.fix_code("".join(self._generate_workflow_code()))
-        print colored(code, "green")
+        if self.options.no_highlight:
+            print code
+        else:
+            print highlight(code, PythonLexer(), TerminalFormatter())
 
     def do_clear(self, line):
         """清理已有代码
@@ -521,4 +528,4 @@ class WorkflowGenerator(cmd.Cmd):
 
 
 def gen(path, options):
-    WorkflowGenerator(options.file_name).cmdloop()
+    WorkflowGenerator(options.file_name, options).cmdloop()
