@@ -1,8 +1,17 @@
-# girlfriend
+<div align="center">
+<h1>Girlfriend</h1>
+<img src="https://img.mengniang.org/common/thumb/2/2e/Alice_kami-sama_no_memo_chou.jpg/221px-Alice_kami-sama_no_memo_chou.jpg"/>
+<p>
+<!-- build status -->
+<a href="https://travis-ci.org/chihongze/girlfriend"><img src="https://travis-ci.org/chihongze/girlfriend.svg?branch=master" alt="build status"/></a>
 
+<!-- coverage status -->
+<a href="https://codecov.io/github/chihongze/girlfriend"><img src="https://img.shields.io/codecov/c/github/chihongze/girlfriend/master.svg" alt="coverage status"/></a>
 
-
-[![Build Status](https://travis-ci.org/chihongze/girlfriend.svg?branch=master)](https://travis-ci.org/chihongze/girlfriend) [![Codecov branch](https://img.shields.io/codecov/c/github/chihongze/girlfriend/master.svg)](https://codecov.io/github/chihongze/girlfriend) [![PyPI](https://img.shields.io/pypi/l/girlfriend.svg)]() [![PyPI](https://img.shields.io/pypi/implementation/girlfriend.svg)]()
+<!-- license -->
+<img src="https://img.shields.io/pypi/l/girlfriend.svg" alt="MIT License"/>
+</p>
+</div>
 
 ## 简介
 
