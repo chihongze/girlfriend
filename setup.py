@@ -15,7 +15,8 @@ install_requires = [
     "stevedore >= 1.7.0",
     "XlsxWriter >= 0.8.4",
     "xlrd >= 0.9.3",
-    "autopep8 >= 1.2.1"
+    "autopep8 >= 1.2.1",
+    "pygments"
 ]
 
 setuptools.setup(
