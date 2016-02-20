@@ -24,6 +24,7 @@ setuptools.setup(
     version=VERSION,
     author="ChiHongze",
     author_email="chihongze@gmail.com",
+    url='http://github.com/chihongze/girlfriend',
     description=(
         "A pure Python girlfriend "
         "she can help you build operation scripts, "
