@@ -1,6 +1,8 @@
 # girlfriend
 
-[![Build Status](https://travis-ci.org/chihongze/girlfriend.svg?branch=master)](https://travis-ci.org/chihongze/girlfriend)
+
+
+[![Build Status](https://travis-ci.org/chihongze/girlfriend.svg?branch=master)](https://travis-ci.org/chihongze/girlfriend) [![Codecov branch](https://img.shields.io/codecov/c/github/chihongze/girlfriend/master.svg)](https://codecov.io/github/chihongze/girlfriend) [![PyPI](https://img.shields.io/pypi/l/girlfriend.svg)]() [![PyPI](https://img.shields.io/pypi/implementation/girlfriend.svg)]()
 
 ## 简介
 
