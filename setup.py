@@ -16,7 +16,8 @@ install_requires = [
     "XlsxWriter >= 0.8.4",
     "xlrd >= 0.9.3",
     "autopep8 >= 1.2.1",
-    "pygments"
+    "pygments",
+    "futures"
 ]
 
 setuptools.setup(

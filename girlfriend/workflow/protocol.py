@@ -389,11 +389,14 @@ class Env(object):
         return cls("test", {}, Config(), u"测试环境")
 
     @args2fields(False)
-    def __init__(self, name, args={}, config={}, description=""):
+    def __init__(self, name, args=None, config=None, description=""):
         """
         :param name 环境名称，比如test
         :param args 该环境的参数
         :param config 该环境当前的配置
         :param description 环境描述
         """
-        pass
+        if args is None:
+            self._args = {}
+        if config is None:
+            self._config = {}

@@ -70,6 +70,7 @@ class Context(AbstractContext):
         """
         return self._config
 
+    @property
     def logger(self):
         """获取Logger对象
         """

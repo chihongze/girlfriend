@@ -7,8 +7,12 @@
 
 import os
 import os.path
+import logging
 import fixtures
 from termcolor import colored
+from girlfriend.plugin import plugin_manager as DEFAULT_PLUGIN_MGR
+from girlfriend.workflow.gfworkflow import Context
+from girlfriend.util.logger import stdout_handler, create_logger
 
 
 class GirlFriendTestCase(fixtures.TestWithFixtures):
@@ -56,3 +60,13 @@ class GirlFriendTestCase(fixtures.TestWithFixtures):
                 "The expected access is {}, "
                 "but the file access is {}"
             ).format(oct(expected_access), oct(file_access)))
+
+    def workflow_context(self, config=None, args=None,
+                         plugin_mgr=DEFAULT_PLUGIN_MGR, logger=None):
+        """构建测试使用的工作流上下文
+        """
+        config, args = config or {}, args or {}
+        if logger is None:
+            logger = create_logger(
+                "girlfriend", (stdout_handler(),), level=logging.DEBUG)
+        return Context(config, args, plugin_mgr, logger)
