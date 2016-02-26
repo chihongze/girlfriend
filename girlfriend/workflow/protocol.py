@@ -10,6 +10,10 @@
    Decision    决策单元，当工作流有多个逻辑分支时
                对上一步的执行结果进行判断，决定接下来运行的Job
 
+   Fork        分支单元，会启用一个新的线程/进程/协程来运行接下来的步骤
+
+   Join        分支汇聚单元，等待所有Fork出的线程完成，并将结果聚合在一起
+
    End         任务结束点，携带执行状态和最终返回结果
 
    Context     上下文对象，用于在工作流的不同Job之间传递数据
@@ -85,6 +89,46 @@ class AbstractDecision(WorkflowUnit):
     @property
     def unittype(self):
         return "decision"
+
+
+class AbstractFork(WorkflowUnit):
+
+    """Fork单元抽象
+    """
+
+    __metaclass__ = ABCMeta
+
+    @property
+    def unittype(self):
+        return "fork"
+
+    @abstractproperty
+    def start_point(self):
+        pass
+
+    @abstractproperty
+    def end_point(self):
+        pass
+
+    @abstractmethod
+    def execute(self, units, parrent_context, parrent_listeners=None):
+        pass
+
+
+class AbstractJoin(WorkflowUnit):
+
+    """Join单元抽象
+    """
+
+    __metaclass__ = ABCMeta
+
+    @property
+    def unittype(self):
+        return "join"
+
+    @abstractmethod
+    def execute(self, context):
+        pass
 
 
 class End(WorkflowUnit):
@@ -257,6 +301,12 @@ class AbstractContext(collections.Mapping):
     @abstractmethod
     def plugin(self, plugin_name):
         """获取插件对象
+        """
+        pass
+
+    @abstractproperty
+    def parrent(self):
+        """获取父级上下文对象
         """
         pass
 

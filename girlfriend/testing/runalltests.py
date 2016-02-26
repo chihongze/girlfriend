@@ -12,7 +12,7 @@ excludes = {
 
 
 def main():
-    test_modules = [
+    argv = [
         "", "--with-coverage",
         (
             "--cover-package="
@@ -28,8 +28,8 @@ def main():
             continue
         if modname in excludes:
             continue
-        test_modules.append(modname)
-    nose.run(argv=test_modules)
+        argv.append(modname)
+    nose.run(argv=argv)
 
 if __name__ == "__main__":
     main()

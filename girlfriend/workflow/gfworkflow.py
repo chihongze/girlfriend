@@ -5,6 +5,7 @@
 
 import sys
 import types
+import itertools
 from girlfriend.exception import (
     GirlFriendBizException,
     InvalidArgumentException,
@@ -14,6 +15,7 @@ from girlfriend.util.lang import (
     DelegateMeta,
     SequenceCollectionType,
     parse_context_var,
+    args2fields
 )
 from girlfriend.util.logger import (
     create_logger,
@@ -22,6 +24,8 @@ from girlfriend.util.logger import (
 from girlfriend.workflow.protocol import (
     AbstractContext,
     AbstractJob,
+    AbstractFork,
+    AbstractJoin,
     AbstractDecision,
     AbstractWorkflow,
     OkEnd,
@@ -49,17 +53,35 @@ class Context(AbstractContext):
         "__iter__",
     ]
 
-    def __init__(self, config, args, plugin_mgr, logger):
+    def __init__(self, parrent, config=None, args=None,
+                 plugin_mgr=None, logger=None):
         super(Context, self).__init__()
         self.delegate = {}
-        self._config = config
-        self._current_unit = None
+        self._parrent = parrent
+        if parrent is not None:
+            self.delegate.update(parrent.delegate)
+
+        self._config = self._extends_parrent(config, parrent, "config")
+
         if args is None:
-            self._args = {}
+            self._args = self._extends_parrent(args, parrent, "_args", {})
         else:
             self._args = args
-        self._plugin_mgr = plugin_mgr
-        self._logger = logger
+
+        self._plugin_mgr = self._extends_parrent(
+            plugin_mgr, parrent, "_plugin_mgr", None)
+
+        self._logger = self._extends_parrent(logger, parrent, "logger")
+
+        self._current_unit = None
+
+    def _extends_parrent(self, arg_value, parrent, field_name,
+                         default_value=None):
+        """从父上下文继承值
+        """
+        if arg_value is None and parrent is not None:
+            return getattr(parrent, field_name, default_value)
+        return arg_value
 
     def __getitem__(self, property):
         return self.delegate.get(property, None)
@@ -95,6 +117,10 @@ class Context(AbstractContext):
     @current_unittype.setter
     def current_unittype(self, current_unittype):
         self._current_unittype = current_unittype
+
+    @property
+    def parrent(self):
+        return self._parrent
 
     def args(self, job_name):
         """获取某个job运行所需要的参数
@@ -162,24 +188,19 @@ class Job(AbstractJob):
         self._goto = goto
 
     def execute(self, context):
-
-        # 将函数类型参数展开
-        if isinstance(self._args, types.FunctionType):
-            self._args = self._args(context)
-
-        # 如果是字符串类型，那么以上下文中的属性作为参数列表
-        if isinstance(self._args, types.StringTypes):
-            if self._args.startswith("$"):
-                self._args = context[self._args[1:]]
-            else:
-                self._args = context[self._args]
+        # 将参数展开
+        self._expand_args(context)
 
         # 如果是生成器，那么迭代执行任务
         if isinstance(self._args, types.GeneratorType):
-            return [self._execute(context, template_args)
-                    for template_args in self._args]
+            result = [self._execute(context, template_args)
+                      for template_args in self._args]
         else:
-            return self._execute(context, self._args)
+            result = self._execute(context, self._args)
+
+        # 自动将最终计算结果写入Context
+        context["{}.result".format(self.name)] = result
+        return result
 
     def _execute(self, context, template_args):
         args = self._get_runtime_args(context, template_args)
@@ -195,8 +216,6 @@ class Job(AbstractJob):
         elif isinstance(args, types.DictType):
             result = executable(context, **args)
 
-        # 自动将插件计算结果写入Context
-        context["{}.result".format(self.name)] = result
         return result
 
     def _get_executable(self, context):
@@ -204,6 +223,18 @@ class Job(AbstractJob):
             return self._caller
         plugin = context.plugin(self._plugin_name)
         return plugin.execute
+
+    def _expand_args(self, context):
+        # 将函数类型参数展开
+        if isinstance(self._args, types.FunctionType):
+            self._args = self._args(context)
+
+        # 如果是字符串类型，那么以上下文中的属性作为参数列表
+        if isinstance(self._args, types.StringTypes):
+            if self._args.startswith("$"):
+                self._args = context[self._args[1:]]
+            else:
+                self._args = context[self._args]
 
     def _get_runtime_args(self, context, template_args):
         """获取运行时参数
@@ -287,6 +318,94 @@ class Decision(AbstractDecision):
         return self._decide_logic(context)
 
 
+class MainThreadFork(AbstractFork):
+
+    """主线程Fork单元，不会额外Fork线程执行，主要用于测试
+    """
+
+    @args2fields()
+    def __init__(self, name, start_point=None, end_point=None,
+                 context_factory=Context, extends_listeners=False,
+                 listeners=None, goto=None):
+        if listeners is None:
+            self._listeners = []
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def goto(self):
+        return self._goto
+
+    @goto.setter
+    def goto(self, goto):
+        self._goto = goto
+
+    @property
+    def start_point(self):
+        return self._start_point
+
+    @start_point.setter
+    def start_point(self, start_point):
+        self._start_point = start_point
+
+    @property
+    def end_point(self):
+        return self._end_point
+
+    @end_point.setter
+    def end_point(self, end_point):
+        self._end_point = end_point
+
+    def execute(self, units, parrent_context, parrent_listeners):
+        workflow = Workflow(
+            units,
+            config=parrent_context.config,
+            plugin_mgr=parrent_context._plugin_mgr,
+            context_factory=self._context_factory,
+            logger=parrent_context.logger,
+            parrent_context=parrent_context
+        )
+
+        if self._extends_listeners and parrent_listeners:
+            # 继承父监听器
+            for listener in itertools.chain(
+                    parrent_listeners, self._listeners):
+                workflow.add_listener(listener)
+        else:
+            for listener in self._listeners:
+                workflow.add_listener(listener)
+
+        return workflow.execute(None, self.start_point, self.end_point)
+
+
+class MainThreadJoin(AbstractJoin):
+
+    """配合MainThreadFork使用的Join单元
+    """
+
+    def __init__(self, name, join, goto=None):
+        self._name = name
+        self._join = join
+        self._goto = goto
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def goto(self):
+        return self._goto
+
+    @goto.setter
+    def goto(self, goto):
+        self._goto = goto
+
+    def execute(self, context):
+        return self._join(context)
+
+
 class Workflow(AbstractWorkflow):
 
     """无状态的本地工作流执行引擎实现
@@ -294,7 +413,7 @@ class Workflow(AbstractWorkflow):
 
     def __init__(self, workflow_list, config,
                  plugin_mgr=plugin_manager, context_factory=Context,
-                 logger=None):
+                 logger=None, parrent_context=None):
         """
         :param workflow_list 工作单元列表
         :param config 配置数据
@@ -313,13 +432,48 @@ class Workflow(AbstractWorkflow):
             if unit.name in self._units:
                 raise WorkflowUnitExistedException(unit.name)
             self._units[unit.name] = unit
-            if unit.unittype == "job":
+            if unit.unittype == "job" or unit.unittype == "join":
                 # 如果未指定goto，那么goto的默认值是下一个节点
                 if unit.goto is None:
                     if idx < len(self._workflow_list) - 1:
                         unit.goto = self._workflow_list[idx + 1].name
                     else:
                         unit.goto = "end"
+            elif unit.unittype == "fork":
+                # 自动设置起始节点
+                if unit.start_point is None:
+                    if idx < len(self._workflow_list) - 1:
+                        unit.start_point = self._workflow_list[idx + 1].name
+                    else:
+                        raise InvalidArgumentException(
+                            u"Fork单元 '{}' 必须指定一个有效的start_point参数")
+                # 设置下一步运行的goto节点，如果未指定，则设置最近的
+                if unit.goto is None:
+                    for i, next_unit in enumerate(
+                            self._workflow_list[idx + 1:], start=idx + 1):
+                        if next_unit.unittype == "join":
+                            unit.goto = next_unit.name
+                            break
+                    else:
+                        raise InvalidArgumentException(
+                            u"Fork单元 '{}' 必须指定一个有效的goto参数".format(unit.name))
+                # 自动设置结束节点
+                if unit.end_point is None:
+                    for i, next_unit in enumerate(
+                            self._workflow_list[idx + 1:], start=idx + 1):
+                        if (
+                            next_unit.unittype == "join" and
+                            next_unit.name == unit.goto
+                        ):
+                            # join unit前一个元素
+                            unit.end_point = self._workflow_list[i - 1].name
+                            break
+                    else:
+                        raise InvalidArgumentException(
+                            u"Fork单元 '{}' 必须指定一个有效的end_point参数".format(
+                                unit.name)
+                        )
+
         self._context_factory = context_factory
         self._listeners = []
 
@@ -328,6 +482,8 @@ class Workflow(AbstractWorkflow):
             self._logger = create_logger("girlfriend", (stdout_handler(),))
         else:
             self._logger = logger
+
+        self._parrent_context = parrent_context
 
     def add_listener(self, listener=None, **kws):
         """为工作流添加监听器，该方法有两种使用方式。
@@ -357,10 +513,11 @@ class Workflow(AbstractWorkflow):
             self._listeners.append(AbstractListener.wrap_function(event_funcs))
             return
 
-    def execute(self, args=None, start_point=None):
+    def execute(self, args=None, start_point=None, end_point=None):
         """执行工作流
            :param start_point 工作流起始点，如果为None，
                               那么将从workflow_list第一个元素开始执行
+           :param end_point   工作流结束点，如果为None，则按规定节点顺序结束
            :param args 运行时参数
         """
         if start_point:
@@ -370,6 +527,7 @@ class Workflow(AbstractWorkflow):
 
         # 构建上下文
         ctx = self._context_factory(
+            parrent=self._parrent_context,
             config=self._config,
             args=args,
             plugin_mgr=self._plugin_manager,
@@ -398,18 +556,29 @@ class Workflow(AbstractWorkflow):
             try:
                 if current_unit.unittype == "job":
                     last_result = current_unit.execute(ctx)
-                    goto = current_unit.goto
+                    if (
+                            end_point is not None and
+                            end_point == current_unit.name
+                    ):
+                        goto = "end"  # 该单元为结束单元
+                    else:
+                        goto = current_unit.goto
                 elif current_unit.unittype == "decision":
                     goto = current_unit.execute(ctx)
                 elif current_unit.unittype == "fork":
-                    pass
+                    current_unit.execute(
+                        self._workflow_list, ctx, self._listeners)
+                    goto = current_unit.goto
+                elif current_unit.unittype == "join":
+                    last_result = current_unit.execute(ctx)
+                    goto = current_unit.goto
                 elif current_unit.unittype == "end":
                     # 用户指定的结束节点
                     current_unit.execute(ctx)
                     self._execute_listeners("on_unit_finish",
                                             ctx, listener_objects)
                     self._execute_listeners("on_finish", ctx, listener_objects)
-                    self._logger.info(u"工作流顺利执行完毕")
+                    self._logger.info(u"工作流成功执行完毕")
                     return current_unit
             except InvalidArgumentException as e:
                 self._logger.exception(u"单元参数错误")
@@ -433,7 +602,7 @@ class Workflow(AbstractWorkflow):
                     current_unit.name, current_unit.unittype))
                 if goto == "end":
                     self._execute_listeners("on_finish", ctx, listener_objects)
-                    self._logger.info(u"工作流顺利执行完毕")
+                    self._logger.info(u"工作流成功执行完毕")
                     return OkEnd(result=last_result)  # 将最后一个单元的结果作为默认返回的结果
                 else:
                     current_unit = self._units[goto]  # 处理下一个单元

@@ -6,7 +6,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from girlfriend.testing import GirlFriendTestCase
 from girlfriend.workflow.gfworkflow import Job
-from girlfriend.workflow.concurrent import ConcurrentJob, ConcurrentForeachJob
+from girlfriend.workflow.concurrent import (
+    ConcurrentJob,
+    ConcurrentForeachJob,
+    BufferingJob
+)
 
 
 class ConcurrentJobTestCase(GirlFriendTestCase):
@@ -158,3 +162,55 @@ class ConcurrentForeachJobTestCase(GirlFriendTestCase):
         result = job.execute(context)
         self.assertEquals([5] * 20, result)
         self.assertEquals([5] * 20, context["test.result"])
+
+
+class BufferingJobTestCase(GirlFriendTestCase):
+
+    def test_execute(self):
+        job = BufferingJob(
+            "test",
+            caller=task,
+            args=[2],
+            max_items=5,
+        )
+        context = self.workflow_context()
+        result = job.execute(context)
+        self.assertEquals(result, [2] * 5)
+
+        # timeout and not immediately
+        job = BufferingJob(
+            "test",
+            caller=task,
+            args=[3],
+            max_items=5,
+            timeout=1
+        )
+        result = job.execute(context)
+        self.assertEquals(result, [3])
+
+        # timeout and immedialely
+        job = BufferingJob(
+            "test",
+            caller=task,
+            args=[3],
+            timeout=1,
+            immediately=True
+        )
+        result = job.execute(context)
+        self.assertEquals(result, [])
+
+        # give_back_handler
+        def give_back_handler(context, un_handle_elements):
+            print "unhandled elements:", un_handle_elements
+
+        job = BufferingJob(
+            "test",
+            caller=task,
+            args=[3],
+            timeout=1,
+            immediately=True,
+            max_items=1,
+            give_back_handler=give_back_handler
+        )
+        result = job.execute(context)
+        self.assertEquals(result, [])

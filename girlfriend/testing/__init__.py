@@ -69,4 +69,4 @@ class GirlFriendTestCase(fixtures.TestWithFixtures):
         if logger is None:
             logger = create_logger(
                 "girlfriend", (stdout_handler(),), level=logging.DEBUG)
-        return Context(config, args, plugin_mgr, logger)
+        return Context(None, config, args, plugin_mgr, logger)

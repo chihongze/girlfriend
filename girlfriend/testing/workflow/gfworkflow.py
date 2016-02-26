@@ -3,6 +3,10 @@
 """本模块为gfworkflow中各个组件的测试用例
 """
 
+from girlfriend.util.logger import (
+    create_logger,
+    stdout_handler,
+)
 from girlfriend.exception import (
     InvalidArgumentException,
     UnknownWitchToExecuteException
@@ -19,6 +23,8 @@ from girlfriend.workflow.gfworkflow import (
     Context,
     Job,
     Decision,
+    MainThreadFork,
+    MainThreadJoin,
     Workflow
 )
 
@@ -26,7 +32,7 @@ from girlfriend.workflow.gfworkflow import (
 class ContextTestCase(GirlFriendTestCase):
 
     def test_get_and_set(self):
-        ctx = Context({}, {}, None, None)
+        ctx = Context(None, {}, {}, None, None)
         ctx["a"] = 1
         self.assertEquals(ctx["a"], 1)
         self.assertEquals(ctx.get("a"), 1)
@@ -54,7 +60,7 @@ class JobTestCase(GirlFriendTestCase):
         plugin_mgr.register(plugin)
         plugin_mgr.sys_prepare(None, "add_one")
 
-        ctx = Context({}, {}, plugin_mgr, None)
+        ctx = Context(None, {}, {}, plugin_mgr, None)
 
         job = Job(
             "test_job",
@@ -64,12 +70,12 @@ class JobTestCase(GirlFriendTestCase):
         self.assertEquals(job.execute(ctx), 6)
 
         # 当上下文中的参数是列表时，上下文中的参数取代列表
-        ctx = Context({}, {"test_job": (-1, -2, -3)}, plugin_mgr, None)
+        ctx = Context(None, {}, {"test_job": (-1, -2, -3)}, plugin_mgr, None)
         self.assertEquals(job.execute(ctx), -6)
 
         # 测试使用上下文中的变量
 
-        ctx = Context({}, {
+        ctx = Context(None, {}, {
             "test_job": ("$a", "$b", "$c")
         }, plugin_mgr, None)
 
@@ -77,7 +83,7 @@ class JobTestCase(GirlFriendTestCase):
         self.assertEquals(job.execute(ctx), 5 + 6 + 7)
 
         # 字符串
-        ctx = Context({}, {
+        ctx = Context(None, {}, {
             "test_job": ("a", "b", "cd")
         }, plugin_mgr, None)
         self.assertEquals(job.execute(ctx), "abcd")
@@ -92,15 +98,15 @@ class JobTestCase(GirlFriendTestCase):
             }
         )
 
-        ctx = Context({}, {}, plugin_mgr, None)
+        ctx = Context(None, {}, {}, plugin_mgr, None)
         self.assertEquals(job.execute(ctx), 6)
 
         # 如果context中同样包含参数，那么基于原先参数执行update操作
-        ctx = Context({}, {"test_job": {"a": -1}}, plugin_mgr, None)
+        ctx = Context(None, {}, {"test_job": {"a": -1}}, plugin_mgr, None)
         self.assertEquals(job.execute(ctx), 4)
 
         # 替换Context中的参数
-        ctx = Context({}, {"test_job": {
+        ctx = Context(None, {}, {"test_job": {
             "a": "$a",
             "b": "$b",
             "c": "$c"
@@ -110,7 +116,8 @@ class JobTestCase(GirlFriendTestCase):
         self.assertEquals(job.execute(ctx), -6)
 
         # 初始化参数类型与上下文参数类型不一致时，抛出InvalidArgumentException
-        ctx = Context({}, {"test_job": ("a", "b", "c")}, plugin_mgr, None)
+        ctx = Context(None, {}, {"test_job": ("a", "b", "c")},
+                      plugin_mgr, None)
         self.failUnlessException(InvalidArgumentException, Job.execute,
                                  job, ctx)
 
@@ -125,7 +132,7 @@ class JobTestCase(GirlFriendTestCase):
 
         # 仅指定可执行逻辑时的情况
         job = Job("hehe", caller=lambda ctx, a, b, c: a * b * c)
-        ctx = Context({}, {"hehe": (5, 2, 3)}, plugin_mgr, None)
+        ctx = Context(None, {}, {"hehe": (5, 2, 3)}, plugin_mgr, None)
         self.assertEquals(job.execute(ctx), 30)
 
         # generator args
@@ -133,7 +140,7 @@ class JobTestCase(GirlFriendTestCase):
         def gen_args(context):
             for i in xrange(10):
                 yield i,
-        ctx = Context({}, {}, plugin_mgr, None)
+        ctx = Context(None, {}, {}, plugin_mgr, None)
         ctx["a"] = 0
 
         job = Job("hehe", plugin="add_one", args=gen_args)
@@ -199,6 +206,32 @@ class WorkflowTestCase(GirlFriendTestCase):
 
         end = workflow.execute(args={"add_one": {"num": 10}})
         self.assertEquals(end.result, 14)
+
+    def test_execute_fork(self):
+        logger = create_logger("gf", (stdout_handler(),))
+        worklist = (
+            Job("add_one"),
+            MainThreadFork("fork"),
+            Job("add_three", args=("$add_one.result",)),
+            MainThreadJoin("join", join=lambda ctx: ctx["add_three"])
+        )
+        workflow = Workflow(worklist, None, self.plugin_mgr, logger=logger)
+        end = workflow.execute(args={"add_one": [1]})
+        self.assertIsNone(end.result)  # 写入的是thread local上下文，而非全局上下文
+
+        def save_to_parrent(ctx):
+            ctx.parrent["add_three"] = ctx["add_three"]
+
+        worklist = (
+            Job("add_one"),
+            MainThreadFork("fork"),
+            Job("add_three", args=("$add_one.result",)),
+            Job("collect", caller=save_to_parrent),
+            MainThreadJoin("join", join=lambda ctx: ctx["add_three"])
+        )
+        workflow = Workflow(worklist, None, self.plugin_mgr, logger=logger)
+        end = workflow.execute(args={"add_one": [1]})
+        self.assertEquals(end.result, 5)
 
     def test_execute_with_exception(self):
         # 测试异常发生时的情况

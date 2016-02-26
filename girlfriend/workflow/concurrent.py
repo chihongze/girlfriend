@@ -4,11 +4,119 @@ from __future__ import absolute_import
 
 import sys
 import types
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from girlfriend.util.lang import args2fields, SequenceCollectionType
 from girlfriend.exception import InvalidArgumentException
 from girlfriend.workflow.protocol import AbstractJob
 from girlfriend.workflow.gfworkflow import Job
+
+
+class BufferingJob(Job):
+
+    """提供缓冲功能的工作单元
+       该工作单元拥有时间和数目两个限制
+       该单元会一直处于阻塞状态，直到缓冲的对象达到了指定的数目或者阻塞超过了指定的时间
+    """
+
+    def __init__(self, name, plugin=None, caller=None, args=None,
+                 max_items=10, timeout=None, filter=None,
+                 immediately=False, give_back_handler=None, goto=None):
+        """
+        :param name 工作单元名称
+        :param plugin 使用插件名称
+        :param caller 执行逻辑
+        :param args 参数
+        :param max_items 最大条目
+        :param timeout 超时时间
+        :param filter 过滤器，接受一个context参数和一个条目，返回True or False
+        :param immediately 如果超时，是否立即结束工作，
+                           如果为True，那么会造成正在处理的数据丢失，但是会准时停止。
+                           如果为False，那么会等待当前任务完成再继续，
+                           但如果目前正在遭遇IO阻塞之类的情况，会继续阻塞很长时间。
+        :param give_back_handler 用于处理immediately为True时丢失的数据，比如重新归还到队列等等。
+        :param goto 下一步要执行的工作单元
+        """
+        Job.__init__(self, name, plugin, caller, args, goto)
+        self._max_items, self._timeout = max_items, timeout
+        self._filter = filter
+        self._immediately = immediately
+        self._give_back_handler = give_back_handler
+        if self._timeout is not None and self._timeout < 0:
+            raise InvalidArgumentException(u"timeout参数必须是大于等于0的整数，单位是秒")
+
+    def execute(self, context):
+        self._expand_args(context)
+
+        timeout_lock = threading.Lock()
+        t = BufferingJob._Executor(self, context, timeout_lock)
+        t.start()
+        if self._timeout:
+            t.join(self._timeout)
+            t.finished = True
+            if not self._immediately:
+                with timeout_lock:
+                    pass
+        else:
+            t.join()
+        result = t.result
+        context["{}.result".format(self._name)] = result
+        return result
+
+    class _Executor(threading.Thread):
+
+        """该类将Job的执行状态封装到一个单独的对象中，避免循环执行Job时造成状态污染
+        """
+
+        def __init__(self, job, context, timeout_lock):
+            threading.Thread.__init__(self)
+            self.job = job
+            self.context = context
+            self.timeout_lock = timeout_lock
+            self.finished = False
+            self._result = []
+            self.copy_result_lock = threading.Lock()
+            self._finally_result = self._result
+
+        def run(self):
+            while len(self._result) < self.job._max_items:
+                if self.finished:
+                    self._finish()
+                    return
+                if self.job._timeout and not self.job._immediately:
+                    with self.timeout_lock:
+                        # 该锁用于timeout的场景，避免遗漏正在执行的中的任务
+                        self._filter_and_append()
+                else:
+                    self._filter_and_append()
+            else:
+                self._finish()
+
+        def _filter_and_append(self):
+            record = self.job._execute(self.context, self.job._args)
+            if self.job._filter is None or self.job._filter(record):
+                self._result.append(record)
+
+        def _finish(self):
+            if self.finished:
+                if (
+                    self.job._immediately and
+                    self.job._give_back_handler is not None
+                ):
+                    with self.copy_result_lock:
+                        if len(self._finally_result) < len(self._result):
+                            for r in self._result[len(self._finally_result):]:
+                                self.job._give_back_handler(self.context, r)
+
+        @property
+        def result(self):
+            if (
+                self.job._immediately and
+                self.job._give_back_handler is not None
+            ):
+                with self.copy_result_lock:
+                    self._finally_result = self._result[::]
+            return self._finally_result
 
 
 class ConcurrentJob(AbstractJob):
@@ -69,10 +177,12 @@ class ConcurrentJob(AbstractJob):
         """
         # 初始化池
         if self._pool is None:
-            self._pool = self._pool_type(len(self._sub_jobs))
+            pool = self._pool_type(len(self._sub_jobs))
+        else:
+            pool = self._pool
 
         # 提交子任务，获取Future列表
-        futures = [self._pool.submit(sub_job.execute, context)
+        futures = [pool.submit(sub_job.execute, context)
                    for sub_job in self._sub_jobs]
 
         # 获取执行结果
@@ -97,6 +207,9 @@ class ConcurrentJob(AbstractJob):
                     all_result.append(self._error_default_value)
             else:
                 all_result.append(result)
+
+        if self._pool is None:
+            pool.shutdown()  # 关闭线程池
 
         if self._join is not None:
             all_result = self._join(context, all_result)
@@ -181,22 +294,27 @@ class ConcurrentForeachJob(Job):
         pool = self._pool_type(self._thread_num)
         sub_args = []
         futures = []
-        if isinstance(self._args, (types.FunctionType, types.GeneratorType)):
-            self._args = self._args()
-        for idx, arg in enumerate(self._args, start=1):
-            sub_args.append(arg)
-            if idx % self._task_num_per_thread == 0:
-                futures.append(
-                    pool.submit(
-                        ConcurrentForeachJob._execute, self, context, sub_args)
-                )
-                sub_args = []
-        else:
-            if sub_args:
-                futures.append(
-                    pool.submit(ConcurrentForeachJob._execute,
-                                self, context, sub_args)
-                )
+        try:
+            if isinstance(self._args,
+                          (types.FunctionType, types.GeneratorType)):
+                self._args = self._args()
+            for idx, arg in enumerate(self._args, start=1):
+                sub_args.append(arg)
+                if idx % self._task_num_per_thread == 0:
+                    futures.append(
+                        pool.submit(
+                            ConcurrentForeachJob._execute,
+                            self, context, sub_args)
+                    )
+                    sub_args = []
+            else:
+                if sub_args:
+                    futures.append(
+                        pool.submit(ConcurrentForeachJob._execute,
+                                    self, context, sub_args)
+                    )
+        finally:
+            pool.shutdown()
 
         # 等待futures
         results = [f.result() for f in futures]
