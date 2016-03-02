@@ -154,13 +154,15 @@ def _task(records):
 
 def _gen_orm_query_args(ctx):
     sqltasks = ctx["task"]["sqltasks"]
-    return [SQL(
-        engine_name=t["db"],
-        variable_name="table_%d" % idx,
-        sql=t["sql"],
-        result_wrapper=TableWrapper(t["table"], t["titles"],
-                                    auto_title_name=True)
-    ) for idx, t in enumerate(sqltasks)]
+    return [
+        SQL(
+            engine_name=t["db"],
+            variable_name="table_%d" % idx,
+            sql=t["sql"],
+            result_wrapper=TableWrapper(t["table"], t["titles"],
+                                        auto_title_name=True)
+        ) for idx, t in enumerate(sqltasks)
+    ]
 
 
 def _gen_excel_args(ctx):

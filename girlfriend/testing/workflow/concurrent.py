@@ -3,13 +3,17 @@
 from __future__ import absolute_import
 
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from girlfriend.testing import GirlFriendTestCase
-from girlfriend.workflow.gfworkflow import Job
+from girlfriend.workflow.protocol import End
+from girlfriend.workflow.gfworkflow import Job, Workflow
 from girlfriend.workflow.concurrent import (
     ConcurrentJob,
     ConcurrentForeachJob,
-    BufferingJob
+    BufferingJob,
+    ConcurrentFork,
+    ConcurrentJoin,
 )
 
 
@@ -214,3 +218,97 @@ class BufferingJobTestCase(GirlFriendTestCase):
         )
         result = job.execute(context)
         self.assertEquals(result, [])
+
+
+class ConcurrentForkTestCase(GirlFriendTestCase):
+
+    def test_fork_join(self):
+        def sleep_task(ctx, task_name, seconds):
+            ctx.logger.info(
+                "Enter task '{task_name}' in thread {thread_name}.".format(
+                    task_name=task_name,
+                    thread_name=threading.current_thread().name
+                )
+            )
+            time.sleep(seconds)
+            ctx.logger.info(
+                "Leave task '{task_name}' in thread {thread_name}.".format(
+                    task_name=task_name,
+                    thread_name=threading.current_thread().name
+                )
+            )
+            return seconds
+
+        def error_happened(ctx):
+            return 1 / 0
+
+        # 正常执行的情况
+        units = [
+            Job(
+                name="task_init",
+                caller=sleep_task,
+                args=("init", 1)
+            ),
+            ConcurrentFork(
+                name="fork",
+                thread_num=10
+            ),
+            Job(
+                name="task_first",
+                caller=sleep_task,
+                args=("first", 2)
+            ),
+            Job(
+                name="task_second",
+                caller=sleep_task,
+                args=("second", 3)
+            ),
+            ConcurrentJoin(
+                name="join"
+            ),
+        ]
+
+        workflow = Workflow(units)
+        end = workflow.execute()
+        self.assertEquals(end.result, [3] * 10)
+
+        # with customize join
+
+        def join_it(ctx, end_list):
+            return sum(end.result for end in end_list)
+
+        sum_units = units[:]
+        sum_units[-1] = ConcurrentJoin(
+            name="join",
+            join=join_it
+        )
+
+        workflow = Workflow(sum_units)
+        end = workflow.execute()
+        self.assertEquals(end.result, 30)
+
+        # with error happened
+
+        error_units = units[:]
+        error_units[-2] = Job(
+            name="task_second",
+            caller=lambda ctx: 1 / 0
+        )
+
+        workflow = Workflow(error_units)
+        end = workflow.execute()
+        self.assertEquals(end.status, End.STATUS_ERROR_HAPPENED)
+        self.assertEquals(end.exc_type, ZeroDivisionError)
+
+        # with existed thread pool
+        pool = ThreadPoolExecutor(5)
+        existed_pool_units = units[:]
+        existed_pool_units[1] = ConcurrentFork(
+            name="fork",
+            thread_num=10,
+            pool=pool
+        )
+
+        workflow = Workflow(existed_pool_units)
+        end = workflow.execute()
+        self.assertEquals(end.result, [3] * 10)

@@ -21,6 +21,7 @@ from girlfriend.util.logger import (
     create_logger,
     stdout_handler,
 )
+from girlfriend.util.config import Config
 from girlfriend.workflow.protocol import (
     AbstractContext,
     AbstractJob,
@@ -54,7 +55,7 @@ class Context(AbstractContext):
     ]
 
     def __init__(self, parrent, config=None, args=None,
-                 plugin_mgr=None, logger=None):
+                 plugin_mgr=None, logger=None, thread_id=None):
         super(Context, self).__init__()
         self.delegate = {}
         self._parrent = parrent
@@ -74,6 +75,7 @@ class Context(AbstractContext):
         self._logger = self._extends_parrent(logger, parrent, "logger")
 
         self._current_unit = None
+        self._thread_id = thread_id
 
     def _extends_parrent(self, arg_value, parrent, field_name,
                          default_value=None):
@@ -122,10 +124,20 @@ class Context(AbstractContext):
     def parrent(self):
         return self._parrent
 
+    @property
+    def thread_id(self):
+        """当前线程标识
+        """
+        return self._thread_id
+
     def args(self, job_name):
         """获取某个job运行所需要的参数
         """
         return self._args.get(job_name, None)
+
+    @property
+    def plugin_mgr(self):
+        return self._plugin_mgr
 
     def plugin(self, plugin_name):
         return self._plugin_mgr.plugin(plugin_name)
@@ -362,7 +374,7 @@ class MainThreadFork(AbstractFork):
         workflow = Workflow(
             units,
             config=parrent_context.config,
-            plugin_mgr=parrent_context._plugin_mgr,
+            plugin_mgr=parrent_context.plugin_mgr,
             context_factory=self._context_factory,
             logger=parrent_context.logger,
             parrent_context=parrent_context
@@ -411,9 +423,9 @@ class Workflow(AbstractWorkflow):
     """无状态的本地工作流执行引擎实现
     """
 
-    def __init__(self, workflow_list, config,
+    def __init__(self, workflow_list, config=None,
                  plugin_mgr=plugin_manager, context_factory=Context,
-                 logger=None, parrent_context=None):
+                 logger=None, parrent_context=None, thread_id=None):
         """
         :param workflow_list 工作单元列表
         :param config 配置数据
@@ -424,7 +436,7 @@ class Workflow(AbstractWorkflow):
         """
 
         self._workflow_list = workflow_list
-        self._config = config
+        self._config = config or Config()
         self._plugin_manager = plugin_mgr
 
         self._units = {}  # 以名称为Key的工作流单元引用字典
@@ -447,7 +459,7 @@ class Workflow(AbstractWorkflow):
                     else:
                         raise InvalidArgumentException(
                             u"Fork单元 '{}' 必须指定一个有效的start_point参数")
-                # 设置下一步运行的goto节点，如果未指定，则设置最近的
+                # 设置下一步运行的goto节点，如果未指定，则设置最近的join
                 if unit.goto is None:
                     for i, next_unit in enumerate(
                             self._workflow_list[idx + 1:], start=idx + 1):
@@ -484,6 +496,7 @@ class Workflow(AbstractWorkflow):
             self._logger = logger
 
         self._parrent_context = parrent_context
+        self._thread_id = thread_id
 
     def add_listener(self, listener=None, **kws):
         """为工作流添加监听器，该方法有两种使用方式。
@@ -525,13 +538,17 @@ class Workflow(AbstractWorkflow):
         else:
             start_unit = self._workflow_list[0]
 
+        if args is None:
+            args = {}
+
         # 构建上下文
         ctx = self._context_factory(
             parrent=self._parrent_context,
             config=self._config,
             args=args,
             plugin_mgr=self._plugin_manager,
-            logger=self._logger
+            logger=self._logger,
+            thread_id=self._thread_id
         )
         listener_objects = {}  # 用来保存每次执行时需要创建新对象的listener
 

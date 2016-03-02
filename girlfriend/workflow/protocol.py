@@ -305,9 +305,19 @@ class AbstractContext(collections.Mapping):
         pass
 
     @abstractproperty
+    def plugin_mgr(self):
+        """插件管理器
+        """
+        pass
+
+    @abstractproperty
     def parrent(self):
         """获取父级上下文对象
         """
+        pass
+
+    @abstractproperty
+    def thread_id(self):
         pass
 
 

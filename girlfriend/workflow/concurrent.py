@@ -7,9 +7,16 @@ import types
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from girlfriend.util.lang import args2fields, SequenceCollectionType
+from girlfriend.util.concurrent import CountDownLatch
 from girlfriend.exception import InvalidArgumentException
-from girlfriend.workflow.protocol import AbstractJob
-from girlfriend.workflow.gfworkflow import Job
+from girlfriend.workflow.protocol import (
+    AbstractJob,
+    AbstractFork,
+    AbstractJoin,
+    End,
+    ErrorEnd
+)
+from girlfriend.workflow.gfworkflow import Job, Context, Workflow
 
 
 class BufferingJob(Job):
@@ -360,3 +367,167 @@ class ConcurrentForeachJob(Job):
         if self._sub_join is not None:
             return self._sub_join(context, results)
         return results
+
+
+class ConcurrentFork(AbstractFork):
+
+    """该工作单元能够Fork一个新的线程来执行子工作流
+    """
+
+    @args2fields()
+    def __init__(self, name, thread_num, pool=None,
+                 pool_type=ThreadPoolExecutor,
+                 start_point=None, end_point=None, context_factory=Context,
+                 extends_listeners=False, listeners=None, goto=None):
+        """
+        :param name Fork单元名称
+        :param thread_num 执行子分支的线程数目
+        :param pool 使用外部的线程池对象
+        :param pool_type 池对象类型，当pool参数为空的时候依据该类型构建线程池
+        :param start_point 子分支的起始节点
+        :param end_point 子分支的结束节点
+        :param context_factory 上下文工厂
+        :param extends_listeners 是否继承父工作流的监听器列表
+        :param listeners 作用于新分支的监听器列表
+        :param goto 配对的join节点名称，如果不指定，那么会自动寻找最近的一个join节点
+        """
+        if self._listeners is None:
+            self._listeners = []
+
+    class _Executor(object):
+
+        def __init__(self, thread_id, start_point, end_point, units,
+                     context_factory, parrent_context, parrent_listeners):
+            self.thread_id = thread_id
+            self.start_point = start_point
+            self.end_point = end_point
+            self.units = units
+            self.context_factory = context_factory
+            self.parrent_context = parrent_context
+            self.parrent_listeners = parrent_listeners
+
+        def __call__(self):
+            try:
+                sub_workflow = Workflow(
+                    self.units,
+                    config=self.parrent_context.config,
+                    plugin_mgr=self.parrent_context.plugin_mgr,
+                    context_factory=self.context_factory,
+                    logger=self.parrent_context.logger,
+                    parrent_context=self.parrent_context,
+                    thread_id=self.thread_id
+                )
+                end = sub_workflow.execute(
+                    None, self.start_point, self.end_point)
+                self.parrent_context[
+                    "_fork.result"][self.thread_id] = end
+            except Exception:
+                exc_type, exc_value, tb = sys.exc_info()
+                self.parrent_context.logger.exception(
+                    u"子线程 - '{}' 发生了异常".format(self.thread_id))
+                self.parrent_context[
+                    "_fork.result"][self.thread_id] = ErrorEnd(
+                        exc_type, exc_value, tb)
+            finally:
+                self.parrent_context[
+                    "_fork.count_down_latch"].count_down()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def goto(self):
+        return self._goto
+
+    @goto.setter
+    def goto(self, goto):
+        self._goto = goto
+
+    @property
+    def start_point(self):
+        return self._start_point
+
+    @start_point.setter
+    def start_point(self, start_point):
+        self._start_point = start_point
+
+    @property
+    def end_point(self):
+        return self._end_point
+
+    @end_point.setter
+    def end_point(self, end_point):
+        self._end_point = end_point
+
+    def execute(self, units, parrent_context, parrent_listeners):
+        # 构建线程池
+        pool = self._pool
+        if pool is None:
+            pool = self._pool_type(self._thread_num)
+            parrent_context["_fork.pool"] = self._pool
+
+        # 初始化CountDownLatch
+        parrent_context["_fork.count_down_latch"] = CountDownLatch(
+            self._thread_num)
+
+        # 初始化结果集
+        parrent_context["_fork.result"] = [None] * self._thread_num
+
+        for thread_id in xrange(0, self._thread_num):
+            pool.submit(ConcurrentFork._Executor(
+                thread_id,
+                self.start_point, self.end_point,
+                units, self._context_factory,
+                parrent_context, parrent_listeners))
+
+
+class ConcurrentJoin(AbstractJoin):
+
+    @args2fields()
+    def __init__(self, name, join=None, goto=None):
+        """
+        :param join join函数接受一个Context对象，以及一个fork结果集列表
+                    如果为None，则使用默认的Join策略。
+        """
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def goto(self):
+        return self._goto
+
+    @goto.setter
+    def goto(self, goto):
+        self._goto = goto
+
+    def execute(self, context):
+        fork_pool = context.get("_fork.pool", None)
+        count_down_latch = context["_fork.count_down_latch"]
+        fork_result = context["_fork.result"]
+
+        try:
+            count_down_latch.await()  # 等待Fork线程执行完毕
+            result = None
+            if self._join is not None:
+                result = self._join(context, fork_result)
+            else:
+                result = []
+                for fork_end in fork_result:
+                    if fork_end.status == End.STATUS_OK:
+                        result.append(fork_end.result)
+                    elif fork_end.status == End.STATUS_BAD_REQUEST:
+                        raise InvalidArgumentException(fork_end.msg)
+                    elif fork_end.status == End.STATUS_ERROR_HAPPENED:
+                        raise fork_end.exc_value
+            context["{}.result".format(self._name)] = result
+            return result
+        finally:
+            # 清理上下文变量
+            if fork_pool is not None:
+                fork_pool.shutdown()
+                del context["_fork.pool"]
+            del context["_fork.count_down_latch"]
+            del context["_fork.result"]
