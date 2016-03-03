@@ -5,7 +5,6 @@
 """
 
 import types
-import operator
 import prettytable
 from abc import (
     ABCMeta,
