@@ -438,7 +438,6 @@ class JoinTablePlugin(object):
         for row in left_table:
             hash_code = hash(row[left_fields])
             right_row_index_list = right_table_hash[hash_code]
-
             if not right_row_index_list:
                 continue
 

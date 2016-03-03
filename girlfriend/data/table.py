@@ -397,8 +397,7 @@ class ObjectRow(BaseLocalRow):
             key = self._mapping[key]
             return getattr(self._row, key)
         if isinstance(key, SequenceCollectionType):
-            getter = operator.attrgetter(*key)
-            return getter(self._row)
+            return tuple(getattr(self._row, k) for k in key)
 
     def __getattr__(self, key):
         return getattr(self._row, key)
