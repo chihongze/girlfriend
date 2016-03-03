@@ -303,9 +303,9 @@ class ListTable(BaseLocalTable):
 
     def __init__(self, name, titles, data=None):
         """
-        :param name 表格名称
-        :param titles 表格标题
-        :param data 如果data为None，那么会生成一个新的二维列表
+        :param name: 表格名称
+        :param titles: 表格标题
+        :param data: 如果data为None，那么会生成一个新的二维列表
                     如果不为None，那么包装既有的二维列表
         """
         BaseLocalTable.__init__(self, name, titles, data, ListRow)
