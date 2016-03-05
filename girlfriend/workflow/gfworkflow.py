@@ -54,7 +54,7 @@ class Context(AbstractContext):
         "__iter__",
     ]
 
-    def __init__(self, parrent, config=None, args=None,
+    def __init__(self, parrent=None, config=None, args=None,
                  plugin_mgr=None, logger=None, thread_id=None):
         super(Context, self).__init__()
         self.delegate = {}
@@ -65,7 +65,8 @@ class Context(AbstractContext):
         self._config = self._extends_parrent(config, parrent, "config")
 
         if args is None:
-            self._args = self._extends_parrent(args, parrent, "_args", {})
+            self._args = self._extends_parrent(
+                args, parrent, "_args") or {}
         else:
             self._args = args
 
