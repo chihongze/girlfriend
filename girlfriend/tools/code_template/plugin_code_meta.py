@@ -264,11 +264,30 @@ all_meta = {
     ),
     "split_table": PluginCodeMeta(
         plugin_name="split_table",
-        args_template="""
+        args_template="""{
                 "table": "$table_var",
                 "split_condition": lambda row: None, "new table name",
                 "variable": None
             }""",
         auto_imports=[]
+    ),
+
+    # text series
+    "read_text": PluginCodeMeta(
+        plugin_name="read_text",
+        args_template="""[
+                TextR(
+                    filepath=None,
+                    record_matcher="line",
+                    record_handler=None,
+                    record_filter=None,
+                    pointer=None,
+                    change_file_logic=None,
+                    max_line=None,
+                    result_wrapper=None,
+                    variable=None
+                )
+            ]""",
+        auto_imports=["from girlfriend.plugin.text import TextR"]
     ),
 }

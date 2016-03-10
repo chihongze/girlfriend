@@ -9,6 +9,8 @@ from girlfriend.util.lang import args2fields
 
 class ReadTextPlugin(object):
 
+    name = "read_text"
+
     def execute(self, context, *readers):
         return [reader(context) for reader in readers]
 
