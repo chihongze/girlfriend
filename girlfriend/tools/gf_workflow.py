@@ -295,9 +295,9 @@ def _get_runtime_args(config, workflow_module, workflow_options, current_env):
         args = {}
 
     # 获取当前环境中的args属性
-    env_args = {} if current_env.args is None else current_env.args
     if isinstance(env_args, types.FunctionType):
         env_args = env_args(workflow_options)
+    env_args = {} if current_env.args is None else current_env.args
     if env_args is None:
         env_args = {}
 

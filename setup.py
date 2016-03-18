@@ -17,7 +17,8 @@ install_requires = [
     "xlrd >= 0.9.3",
     "autopep8 >= 1.2.1",
     "pygments",
-    "futures"
+    "futures",
+    "gevent"
 ]
 
 setuptools.setup(
