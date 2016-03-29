@@ -90,12 +90,12 @@ class TextR(object):
             # 修改记录位置
             self.record_pos = self.current_pos
 
-        def prepare_read(self, predicate):
+        def prepare_read(self, until):
             with codecs.open(self.filepath, "r", "utf-8") as f:
                 f.seek(self.current_pos)
                 lines = []
                 for line in f:
-                    if not predicate(line):
+                    if not until(line):
                         break
                     lines.append(line)
                 return lines

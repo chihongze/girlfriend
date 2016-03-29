@@ -5,14 +5,76 @@
    gf_workflow -m workflow.py -c config_file -e test ...
 """
 
+import sys
+import argparse
+import termcolor
+
+# gevent patch
+
+try:
+
+    def _parse_arguments():
+        """解析gf_workflow自身参数"""
+        parser = argparse.ArgumentParser(
+            description=__doc__.decode("utf-8"))
+
+        parser.add_argument(
+            "--module", "-m", dest="module", help=u"包含工作流定义的模块")
+        parser.add_argument("--config", "-c", dest="config",
+                            help=u"配置文件，默认将使用HOME/.gf/gf.cfg",
+                            default="default")
+        parser.add_argument("--environ", "-e", dest="environ",
+                            help=u"指定当前使用环境",
+                            default="test")
+        parser.add_argument("--path", "-p", dest="path",
+                            help=u"指定PYTHONPATH，使用分号分割", default="")
+        parser.add_argument("--run-mode", "-r", dest="run_mode",
+                            help=(
+                                u"once - 只运行一次, "
+                                u"forever - 在循环中运行, "
+                                u"interval:1m - 每隔一分钟运行一次"
+                            ),
+                            default="once")
+        parser.add_argument("--show-args", dest="show_args",
+                            action="store_true", help=u"显示工作流模块自定义参数")
+        parser.add_argument("--pid", dest="pid", help=u"指定PID文件")
+        parser.add_argument("--gevent-patch", dest="gevent_patch",
+                            default=None,
+                            help=(
+                                u"Gevent补丁类型 可以指定all，也可以具体patch某些模块，"
+                                u"dns,os,select,socket,ssl,subprocess,sys,"
+                                u"thread,time patch多个模块请使用逗号分隔"
+                            ))
+
+        return parser.parse_known_args(sys.argv[1:])[0]
+
+    from gevent import monkey
+    global TOOLS_OPTIONS
+    TOOLS_OPTIONS = _parse_arguments()
+    gevent_patch = TOOLS_OPTIONS.gevent_patch
+
+    if gevent_patch:
+        gevent_patch = gevent_patch.strip()
+
+    if gevent_patch == "all":
+        monkey.patch_all()
+        termcolor.cprint(u"Gevent patch all", "green")
+    elif gevent_patch:
+        patch_modules = [m.strip() for m in gevent_patch.split(",")]
+        for patch_module in patch_modules:
+            getattr(monkey, "patch_{}".format(patch_module))()
+            termcolor.cprint(
+                u"Gevent patch module: '{}'".format(patch_module), "green")
+except:
+    import traceback
+    traceback.print_exc()
+
 import os
 import imp
-import sys
 import time
 import types
 import os.path
 import logging
-import argparse
 import pkg_resources
 from girlfriend.util.script import show_msg_and_exit
 from girlfriend.util.config import Config
@@ -34,15 +96,15 @@ plugin_manager, plugin_names = None, None
 
 
 def main():
-    tools_options = _parse_arguments()
-    config = Config.load_by_name(tools_options.config)
-    _add_python_path(tools_options, config)
-    workflow_module = _load_module(tools_options)
+    global TOOLS_OPTIONS
+    config = Config.load_by_name(TOOLS_OPTIONS.config)
+    _add_python_path(config)
+    workflow_module = _load_module()
 
     workflow_parser = getattr(workflow_module, "cmd_parser", None)
 
     # 展示工作流模块所需要的参数说明
-    if tools_options.show_args:
+    if TOOLS_OPTIONS.show_args:
         _show_args(workflow_parser)
 
     # 解析workflow所需参数
@@ -51,44 +113,17 @@ def main():
         workflow_options = workflow_parser.parse_known_args(sys.argv[1:])[0]
 
     # 获取当前运行环境
-    current_env = _get_current_env(workflow_module, tools_options)
+    current_env = _get_current_env(workflow_module)
 
     # 更新配置信息，使用模块的配置项覆盖配置文件中的配置项
     _update_config(config, current_env, workflow_module, workflow_options)
 
     # 保存pid到文件
-    if tools_options.pid:
-        _save_pid_file(tools_options.pid)
+    if TOOLS_OPTIONS.pid:
+        _save_pid_file(TOOLS_OPTIONS.pid)
 
     # 执行工作流
-    _execute_workflow(config, workflow_module, workflow_options,
-                      tools_options, current_env)
-
-
-def _parse_arguments():
-    """解析gf_workflow自身参数"""
-    parser = argparse.ArgumentParser(
-        description=__doc__.decode("utf-8"))
-
-    parser.add_argument("--module", "-m", dest="module", help=u"包含工作流定义的模块")
-    parser.add_argument("--config", "-c", dest="config",
-                        help=u"配置文件，默认将使用HOME/.gf/gf.cfg", default="default")
-    parser.add_argument("--environ", "-e", dest="environ", help=u"指定当前使用环境",
-                        default="test")
-    parser.add_argument("--path", "-p", dest="path",
-                        help=u"指定PYTHONPATH，使用分号分割", default="")
-    parser.add_argument("--run-mode", "-r", dest="run_mode",
-                        help=(
-                            u"once - 只运行一次, "
-                            u"forever - 在循环中运行, "
-                            u"interval:1m - 每隔一分钟运行一次"
-                        ),
-                        default="once")
-    parser.add_argument("--show-args", dest="show_args",
-                        action="store_true", help=u"显示工作流模块自定义参数")
-    parser.add_argument("--pid", dest="pid", help=u"指定PID文件")
-
-    return parser.parse_known_args(sys.argv[1:])[0]
+    _execute_workflow(config, workflow_module, workflow_options, current_env)
 
 
 def _save_pid_file(pid_file_path):
@@ -96,9 +131,9 @@ def _save_pid_file(pid_file_path):
         f.write(str(os.getpid()))
 
 
-def _add_python_path(tools_options, config):
+def _add_python_path(config):
     """添加PYTHONPATH"""
-    python_path = tools_options.path
+    python_path = TOOLS_OPTIONS.path
     if python_path:
         sys.path.extend(python_path.split(";"))
     python_path = config.get("workflow", "path")
@@ -106,9 +141,9 @@ def _add_python_path(tools_options, config):
         sys.path.extend(python_path.split(";"))
 
 
-def _load_module(tools_options):
+def _load_module():
     """加载工作流模块"""
-    module_path = tools_options.module
+    module_path = TOOLS_OPTIONS.module
 
     if not module_path:
         show_msg_and_exit(u"必须使用-m参数指定一个工作流描述模块")
@@ -162,39 +197,38 @@ def _update_config_items(config, new_config, workflow_options):
     config.update(new_config)
 
 
-def _get_current_env(workflow_module, tools_options):
+def _get_current_env(workflow_module):
     env_list = getattr(workflow_module, "env", None)
     if env_list is None:
         return Env.test_env()
-    current_env_name = tools_options.environ
+    current_env_name = TOOLS_OPTIONS.environ
     for env in env_list:
         if env.name == current_env_name:
             return env
     show_msg_and_exit(u"找不到目标环境：'{}'".format(current_env_name))
 
 
-def _execute_workflow(config, workflow_module, workflow_options,
-                      tools_options, current_env):
+def _execute_workflow(config, workflow_module, workflow_options, current_env):
     workflow_engine = _get_workflow_engine(
         config, workflow_module, workflow_options, current_env)
 
     # 一次性执行
     try:
-        if tools_options.run_mode == "once":
+        if TOOLS_OPTIONS.run_mode == "once":
             return _run_once(workflow_engine, config, workflow_module,
                              workflow_options, current_env)
         # 永久性执行
-        elif tools_options.run_mode == "forever":
+        elif TOOLS_OPTIONS.run_mode == "forever":
             _run_forever(workflow_engine, config, workflow_module,
                          workflow_options, current_env)
         # 按时间间隔执行
-        elif tools_options.run_mode.startswith("interval:"):
+        elif TOOLS_OPTIONS.run_mode.startswith("interval:"):
             _run_interval(
                 workflow_engine, config,
                 workflow_module, workflow_options,
-                current_env, tools_options.run_mode[len("interval:"):])
+                current_env, TOOLS_OPTIONS.run_mode[len("interval:"):])
         else:
-            print u"未知的运行模式：'{}'".format(tools_options.run_mode)
+            print u"未知的运行模式：'{}'".format(TOOLS_OPTIONS.run_mode)
     finally:
         _clean_plugins(config)
 
@@ -295,9 +329,9 @@ def _get_runtime_args(config, workflow_module, workflow_options, current_env):
         args = {}
 
     # 获取当前环境中的args属性
+    env_args = {} if current_env.args is None else current_env.args
     if isinstance(env_args, types.FunctionType):
         env_args = env_args(workflow_options)
-    env_args = {} if current_env.args is None else current_env.args
     if env_args is None:
         env_args = {}
 

@@ -74,6 +74,12 @@ setuptools.setup(
 
             # email plugin
             "send_mail = girlfriend.plugin.mail:SendMailPlugin",
+
+            # text plugin
+            "read_text = girlfriend.plugin.text:ReadTextPlugin",
+
+            # crawl plugin
+            "crawl = girlfriend.plugin.crawl:CrawlPlugin"
         ],
 
         # builtin workflow
