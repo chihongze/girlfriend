@@ -15,6 +15,8 @@
 
 ## 简介
 
+[![Join the chat at https://gitter.im/chihongze/girlfriend](https://badges.gitter.im/chihongze/girlfriend.svg)](https://gitter.im/chihongze/girlfriend?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 日常工作中，我们会用Python脚本去完成大量的临时工作，比如跑数据或者是系统的日常维护。这些脚本往往是在一些“Quick and dirty”的需求场景下一气呵成的，很少得到井井有条的管理，更别提从组件复用的角度去进行设计。这样长期下去的结果是，一方面，大量的临时脚本泛滥成灾，难以维护；另一方面，虽然表面数目众多，但其实很多脚本的结构和功能是相同的，只是由于一些微小的需求场景差异，导致无法对之前的工作进行复用，大量无聊的重复劳动由此产生。
 
 girlfriend尝试一种新的开发方式来改变这种现状，它通过将不同功能的插件按照工作流进行组合的方式来编写脚本。如果你是Mac用户，那么你可能会觉着girlfriend像一个Python版的Automator；如果你是一个.Net开发者，你可能在girlfriend身上发现Windows Workflow的影子，不过借助Python语言强大的表达能力，girlfriend要比XAML灵活敏捷的多。
