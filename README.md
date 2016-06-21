@@ -10,9 +10,6 @@
 
 <!-- license -->
 <img src="https://img.shields.io/pypi/l/girlfriend.svg" alt="MIT License"/>
-
-<!-- Chat -->
-<img src="https://gitter.im/chihongze/girlfriend?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"/>
 </p>
 </div>
 
