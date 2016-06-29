@@ -154,7 +154,7 @@ class DecisionTemplate(CodeTemplate):
         if self.decision_function:
             return """
         Decision(
-            {unit_name},
+            "{unit_name}",
             {decision_function}
         ),\n""".format(
                 unit_name=self.unit_name,
@@ -285,12 +285,15 @@ class WorkflowGenerator(cmd.Cmd):
         添加Decision单元
         :param line 格式：Decision单元名称 [执行函数名]
         """
+        if not line:
+            print "decison 单元名称 [执行函数名]"
+            return
         cmd_args = line.split(" ")
         unit_name = cmd_args[0].strip()
-        if len(cmd_args) >= 1:
+        if len(cmd_args) > 1:
             decision_function = cmd_args[1].strip()
         else:
-            decision_function = None
+            decision_function = unit_name
         decision_unit = DecisionTemplate(unit_name, decision_function)
         self.units.append(decision_unit)
 
@@ -300,6 +303,13 @@ class WorkflowGenerator(cmd.Cmd):
                             目标工作单元 before 某个工作单元
                             目标工作单元 after 某个工作单元
         """
+
+        if not line:
+            print u"move 目标工作单元 目标位置索引(从0开始)"
+            print u"move 目标工作单元 before 某个工作单元"
+            print u"目标工作单元 after 某个工作单元"
+            return
+
         cmd_parts = re.split(r"\s+", line)
         target_unit = self.units[self.units.index(cmd_parts[0])]
 

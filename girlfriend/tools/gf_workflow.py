@@ -8,9 +8,9 @@
 import sys
 import argparse
 import termcolor
+import traceback
 
 # gevent patch
-
 try:
 
     def _parse_arguments():
@@ -49,7 +49,6 @@ try:
         return parser.parse_known_args(sys.argv[1:])[0]
 
     from gevent import monkey
-    global TOOLS_OPTIONS
     TOOLS_OPTIONS = _parse_arguments()
     gevent_patch = TOOLS_OPTIONS.gevent_patch
 
@@ -65,8 +64,11 @@ try:
             getattr(monkey, "patch_{}".format(patch_module))()
             termcolor.cprint(
                 u"Gevent patch module: '{}'".format(patch_module), "green")
+except SystemExit as e:
+    if (e.code != 0):
+        traceback.print_exc()
+    exit(0)
 except:
-    import traceback
     traceback.print_exc()
 
 import os

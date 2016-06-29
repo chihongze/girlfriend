@@ -173,7 +173,7 @@ class TableColumn2TitlePlugin(object):
             row = []
             row.extend(unique_columns)
             series = tuple(tmp_result[unique_columns].get(col, default)
-                           for col in tmp_result[unique_columns])
+                           for col in title_column_values)
             row.extend(series)
             sum_value = None
             if sum_title:
