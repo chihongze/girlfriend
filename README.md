@@ -232,8 +232,35 @@ gf_workflow -m myworkflow.py
 
 大功告成！看看数据打印出来了没有？Excel生成了没有？另外，重点是，完成这个工作用了几分钟？相比过去要少写多少代码？:)
 
-如果你好奇这一切是如何发生的，那么请仔细阅读下面的教程，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器以及如何根据自己的业务来扩展这些组件。当然你也可以盯着上面的代码，猜一猜它是怎么工作的，然后再去看代码验证一下，这样学习起来更有意思。
+如果你好奇这一切是如何发生的，那么请阅读下面的说明，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器等等。
 
-## 教程
+## 说明文档
 
-[Girlfriend Tutorial](#)
+### Girlfriend基础组件
+
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter1.html" target="_blank">Girlfriend总体架构</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter2.html" target="_blank">工作流详解</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter3.html" target="_blank">插件开发</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter4.html" target="_blank">Table结构</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter5.html" target="_blank">命令行下的执行器 —— gf\_workflow</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter6.html" target="_blank">像做填空题一样写代码 —— gf\_gen</a>
+
+### 内置插件
+
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter7.html" target="_blank">可无缝切换的日志分析工具</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter8.html" target="_blank">使用crawl插件来抓取数据</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter10.html" target="_blank">全方位操作Excel</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter11.html" target="_blank">如何科学的发送邮件</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter13.html" target="_blank">Table操作插件 —— 适配、转换、连接、打印</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter14.html" target="_blank">JSON和CSV</a>
+
+### 并发
+
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter16.html" target="_blank">ConcurrentJob、ConcurrentForeachJob、BufferingJob</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter17.html" target="_blank">Fork/Join组件</a>
+
+### 其它
+
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter15.html" target="_blank">内置工作流 —— SQLReport</a>
+
+
