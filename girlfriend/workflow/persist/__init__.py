@@ -50,7 +50,7 @@ class RecoverPolicy(object):
     另外就是关于Context的恢复策略，需要提供一个可以恢复旧有数据的上下文工场
     """
 
-    __meta__ = ABCMeta
+    __metaclass__ = ABCMeta
 
     @abstractmethod
     def load(self):

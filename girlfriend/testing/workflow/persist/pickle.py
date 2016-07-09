@@ -9,11 +9,13 @@ import fixtures
 from girlfriend.testing import GirlFriendTestCase
 from girlfriend.workflow.gfworkflow import Workflow, Job
 from girlfriend.workflow.persist import NoNeedRecoverException
+from girlfriend.workflow.persist.file import (
+    STATUS_RUNNING,
+    STATUS_FINISHED
+)
 from girlfriend.workflow.persist.pickle import (
     PickleRecoverPolicy,
     PicklePersistListener,
-    STATUS_RUNNING,
-    STATUS_FINISHED
 )
 
 
