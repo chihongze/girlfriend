@@ -55,9 +55,14 @@ class Context(AbstractContext):
     ]
 
     def __init__(self, parrent=None, config=None, args=None,
-                 plugin_mgr=None, logger=None, thread_id=None):
+                 plugin_mgr=None, logger=None, thread_id=None, data=None):
         super(Context, self).__init__()
-        self.delegate = {}
+
+        if data is None:
+            self.delegate = {}
+        else:
+            self.delegate = data
+
         self._parrent = parrent
         if parrent is not None:
             self.delegate.update(parrent.delegate)
