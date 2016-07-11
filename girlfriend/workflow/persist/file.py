@@ -80,7 +80,7 @@ class AbstractFileRecoverPolicy(RecoverPolicy):
             raise NoNeedRecoverException(
                 u"'{}'中被持久化的工作流已经处于完成状态。".format(self._recover_from))
 
-        def _pickle_context_factory(
+        def _context_factory(
                 parrent=None, config=None, args=None,
                 plugin_mgr=None, logger=None, thread_id=None, data=None):
 
@@ -102,7 +102,7 @@ class AbstractFileRecoverPolicy(RecoverPolicy):
 
         return RecoverInfo(
             dumped_data["current_unit"],
-            _pickle_context_factory
+            _context_factory
         )
 
     @abstractmethod

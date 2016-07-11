@@ -9,6 +9,7 @@ import os
 import os.path
 import logging
 import fixtures
+import sqlite3
 from termcolor import colored
 from girlfriend.plugin import plugin_manager as DEFAULT_PLUGIN_MGR
 from girlfriend.workflow.gfworkflow import Context
@@ -60,6 +61,17 @@ class GirlFriendTestCase(fixtures.TestWithFixtures):
                 "The expected access is {}, "
                 "but the file access is {}"
             ).format(oct(expected_access), oct(file_access)))
+
+    def assertSQLiteTableExists(self, db_file, table):
+        """判定SQLite表是否存在
+        """
+        with sqlite3.connect(db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "select * from sqlite_master "
+                "where name = '{}' and type = 'table'".format(table)
+            )
+            self.assertIsNotNone(cursor.fetchone())
 
     def workflow_context(self, config=None, args=None,
                          plugin_mgr=DEFAULT_PLUGIN_MGR, logger=None):

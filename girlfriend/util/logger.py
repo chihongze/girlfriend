@@ -63,3 +63,6 @@ def create_logger(logger_name, handlers, level=logging.INFO,
         handler.setFormatter(logging.Formatter(LOG_FORMATTER))
         logger.addHandler(handler)
     return logger
+
+
+GF_LOG = create_logger("girlfriend", (stdout_handler(),))
