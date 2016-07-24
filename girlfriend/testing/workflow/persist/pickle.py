@@ -8,7 +8,7 @@ import pickle
 import fixtures
 from girlfriend.testing import GirlFriendTestCase
 from girlfriend.workflow.gfworkflow import Workflow, Job
-from girlfriend.workflow.persist import NoNeedRecoverException
+from girlfriend.workflow.persist import WorkflowFinishedException
 from girlfriend.workflow.persist.file import (
     STATUS_RUNNING,
     STATUS_FINISHED
@@ -90,7 +90,7 @@ class PickleRecoverPolicyTestCase(GirlFriendTestCase):
         try:
             prp.load()
             self.fail(u"工作流已经完成，应该抛出NoNeedRecoverException")
-        except NoNeedRecoverException as e:
+        except WorkflowFinishedException as e:
             print e.message
 
     def testLoadWithCrash(self):

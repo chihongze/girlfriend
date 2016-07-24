@@ -90,11 +90,16 @@ from girlfriend.util.logger import (
 )
 from girlfriend.workflow.protocol import Env
 from girlfriend.workflow.gfworkflow import Workflow, Context
+from girlfriend.workflow.persist import WorkflowFinishedException
 from girlfriend.plugin import plugin_manager as DEFAULT_PLUGIN_MANAGER
 
 
 # 插件管理器以及用到的插件名称
 plugin_manager, plugin_names = None, None
+# 恢复策略
+recover_info = None
+# 是否第一次执行
+first_run = True
 
 
 def main():
@@ -255,9 +260,16 @@ def _run_forever(workflow_engine, config, workflow_module,
 
 def _run_once(workflow_engine, config, workflow_module,
               workflow_options, current_env):
+    global first_run
+    global recover_info
     runtime_args = _get_runtime_args(
         config, workflow_module, workflow_options, current_env)
-    return workflow_engine.execute(runtime_args)
+    if first_run and recover_info is not None:
+        workflow_engine.execute(
+            args=runtime_args, start_point=recover_info.begin_unit)
+    else:
+        workflow_engine.execute(runtime_args)
+    first_run = False
 
 
 def _get_workflow_engine(config, workflow_module,
@@ -304,8 +316,19 @@ def _get_workflow_engine(config, workflow_module,
             "girlfriend", (daily_rotaiting_handler(logger),),
             level=logger_level)
 
+    global recover_info
+    recover_policy = _get_recover_policy(workflow_module)
+    if recover_policy is not None:
+        try:
+            recover_info = recover_policy.load()
+        except WorkflowFinishedException as e:
+            # 工作流已经完成了，提示用户手动清除dump数据。
+            show_msg_and_exit(e.msg)
+
     workflow_engine = Workflow(
-        workflow_list, config, plugin_manager, Context, logger)
+        workflow_list, config, plugin_manager,
+        Context if recover_info is None else recover_info.context_factory,
+        logger)
 
     # 获取监听器列表
     listeners = getattr(workflow_module, "listeners", [])
@@ -318,6 +341,11 @@ def _get_workflow_engine(config, workflow_module,
         workflow_engine.add_listener(listener)
 
     return workflow_engine
+
+
+def _get_recover_policy(workflow_module):
+    recover_policy = getattr(workflow_module, "recover_policy", None)
+    return recover_policy
 
 
 def _get_runtime_args(config, workflow_module, workflow_options, current_env):

@@ -41,6 +41,8 @@ pip install girlfriend
 
 你也可以clone源码，直接运行`python ./setup.py install` 进行安装。
 
+* 注意：Girlfriend现在未做多语言处理，目前仅支持中文的提示，因此请确保你的操作系统已经安装并设置了`zh_CN.UTF-8`编码，否则会在输出操作提示时出现UnicodeEncodeError之类的错误。编码的设置详情请搜索各Linux发行版的说明。
+
 ## 生成配置文件
 
 安装完毕之后，请直接在命令行运行`gf_config`命令，会自动在用户目录下生成一个`.gf`目录，并且包含了一个`gf.cfg`文件，这个就是girlfriend的默认配置文件了，这里包含了girlfriend插件所需要的配置，比如数据库连接、SMTP服务器等等。
@@ -244,6 +246,7 @@ gf_workflow -m myworkflow.py
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter4.html" target="_blank">Table结构</a>
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter5.html" target="_blank">命令行下的执行器 —— gf\_workflow</a>
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter6.html" target="_blank">像做填空题一样写代码 —— gf\_gen</a>
+* <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter18.html" target="_blank">上下文持久化与中断恢复</a>
 
 ### 内置插件
 
@@ -258,6 +261,11 @@ gf_workflow -m myworkflow.py
 
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter16.html" target="_blank">ConcurrentJob、ConcurrentForeachJob、BufferingJob</a>
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter17.html" target="_blank">Fork/Join组件</a>
+
+### 服务化和分布式
+
+* <a href="#">创建RESTFul服务节点</a>
+* <a href="#">构建分布式拓扑</a>
 
 ### 其它
 

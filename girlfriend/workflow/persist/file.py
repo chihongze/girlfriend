@@ -11,7 +11,7 @@ from girlfriend.workflow.protocol import AbstractListener
 from girlfriend.workflow.persist import (
     RecoverInfo,
     RecoverPolicy,
-    NoNeedRecoverException
+    WorkflowFinishedException
 )
 from girlfriend.workflow.gfworkflow import Context
 
@@ -77,7 +77,7 @@ class AbstractFileRecoverPolicy(RecoverPolicy):
 
         if dumped_data["status"] == STATUS_FINISHED:
             # 工作流已经完成，无需恢复
-            raise NoNeedRecoverException(
+            raise WorkflowFinishedException(
                 u"'{}'中被持久化的工作流已经处于完成状态。".format(self._recover_from))
 
         def _context_factory(

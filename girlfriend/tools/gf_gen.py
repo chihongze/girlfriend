@@ -18,6 +18,8 @@ from girlfriend.util.script import show_msg_and_exit
 
 def main():
     options = parse_cmd_args()
+    if not options.template:
+        show_msg_and_exit(u"您必须指定一个生成模板，比如 -t :workflow")
     tpl_module = load_module(options.template,
                              entry_point="girlfriend.code_template")
     if tpl_module is None:

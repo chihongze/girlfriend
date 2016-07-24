@@ -65,4 +65,4 @@ def create_logger(logger_name, handlers, level=logging.INFO,
     return logger
 
 
-GF_LOG = create_logger("girlfriend", (stdout_handler(),))
+# GF_LOG = create_logger("girlfriend", (stdout_handler(),))

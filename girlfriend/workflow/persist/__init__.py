@@ -33,7 +33,7 @@ class RecoverInfo(object):
         return self._context_factory
 
 
-class NoNeedRecoverException(GirlFriendSysException):
+class WorkflowFinishedException(GirlFriendSysException):
 
     """
     当工作流无需恢复时抛出该异常，比如持久化数据不存在，或者对应的工作流已经成功完成等等。
