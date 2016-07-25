@@ -142,6 +142,8 @@ class End(WorkflowUnit):
 
     STATUS_ERROR_HAPPENED = 2  # 服务出错
 
+    STATUS_STOPPED = 3  # 工作流被终止
+
     def __init__(self, name, status, result=None, execute=None):
         self._name = name
         self._status = status
@@ -257,6 +259,31 @@ class ErrorEnd(End):
         traceback.print_exception(self._exc_type, self._exc_value, self._tb)
 
 
+class StoppedEnd(End):
+
+    """当向工作流发出停止请求时，返回该结果
+    """
+
+    def __init__(self, stopped_on, context_data):
+        End.__init__(
+            self,
+            name="stopped_end",
+            status=End.STATUS_STOPPED,
+            result=None,
+            execute=None
+        )
+        self._stopped_on = stopped_on
+        self._context_data = context_data
+
+    @property
+    def stopped_on(self):
+        return self._stopped_on
+
+    @property
+    def context_data(self):
+        return self._context_data
+
+
 class AbstractContext(collections.Mapping):
 
     """上下文抽象
@@ -343,6 +370,12 @@ class AbstractWorkflow(object):
         """
         pass
 
+    @abstractmethod
+    def stop(self):
+        """停止工作流执行
+        """
+        pass
+
 
 class AbstractListener(object):
 
@@ -357,7 +390,8 @@ class AbstractListener(object):
         "on_interrupt",
         "on_interrupt_now",
         "on_error",
-        "on_finish"
+        "on_finish",
+        "on_stop",
     )
 
     @classmethod
@@ -396,6 +430,11 @@ class AbstractListener(object):
     def on_finish(self, context):
         """当工作流顺利结束时，执行此方法
            当因错误而结束时，不会执行此方法
+        """
+        pass
+
+    def on_stop(self, context):
+        """当工作流被设置为停止状态时，执行此方法
         """
         pass
 

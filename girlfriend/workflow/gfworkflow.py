@@ -32,6 +32,7 @@ from girlfriend.workflow.protocol import (
     OkEnd,
     ErrorEnd,
     BadRequestEnd,
+    StoppedEnd,
     AbstractListener
 )
 from girlfriend.plugin import plugin_manager
@@ -445,6 +446,8 @@ class Workflow(AbstractWorkflow):
         self._config = config or Config()
         self._plugin_manager = plugin_mgr
 
+        self._stop_mark = False  # 终止标记
+
         self._units = {}  # 以名称为Key的工作流单元引用字典
         for idx, unit in enumerate(self._workflow_list):
             if unit.name in self._units:
@@ -570,6 +573,12 @@ class Workflow(AbstractWorkflow):
             ctx.current_unit = current_unit.name
             ctx.current_unittype = current_unit.unittype
 
+            # 检测停止标记
+            if self._stop_mark:
+                self._logger.info(u"检测到停止标记，工作流正在停止...")
+                self._execute_listeners("on_stop", ctx, listener_objects)
+                return StoppedEnd(current_unit.name, ctx.delegate)
+
             # 进入新的Unit
             self._logger.info(u"开始执行工作单元 {} [{}]".format(
                 current_unit.name, current_unit.unittype))
@@ -660,6 +669,11 @@ class Workflow(AbstractWorkflow):
             listener_obj = listener_class()
             listener_objects[idx] = listener_obj
         return listener_obj
+
+    def stop(self):
+        # 只是将停止标记设置为True，具体何时停止，由执行循环来决定
+        self._logger.info(u"接收到停止请求")
+        self._stop_mark = True
 
 
 class WorkflowUnitExistedException(GirlFriendBizException):

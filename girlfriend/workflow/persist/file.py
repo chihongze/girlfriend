@@ -30,20 +30,24 @@ class AbstractFilePersistListener(AbstractListener):
         """在每个任务单元正式开始之前，都会将当前上下文对象dump下来。
            在Fork中执行的单元除外
         """
-        # 确保只dump主工作流的单元
-        if context.thread_id is None:
-            self._dump_context(context, STATUS_RUNNING)
-            context.logger.debug(u"Dump context to '{}' success.".format(
-                self._dump_to))
-        else:
-            context.logger.debug(
-                "Dump ignore '{}'.".format(context.current_unit))
+        self._persist_context(context, STATUS_RUNNING)
+
+    def on_stop(self, context):
+        """当收到停止请求的时候，也会将当前上下文对象dump下来
+        """
+        self._persist_context(context, STATUS_RUNNING)
 
     def on_finish(self, context):
         """在整个工作流结束的时候记录完成状态，处于完成状态的工作流无需恢复中断
         """
+        self._persist_context(context, STATUS_FINISHED)
+
+    def _persist_context(self, context, status):
+        # 确保只dump主工作流的单元
         if context.thread_id is None:
-            self._dump_context(context, STATUS_FINISHED)
+            self._dump_context(context, status)
+            context.logger.debug(u"Dump context to '{}' success.".format(
+                self._dump_to))
         else:
             context.logger.debug(
                 "Dump ignore '{}'.".format(context.current_unit))
