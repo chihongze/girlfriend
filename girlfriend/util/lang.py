@@ -216,3 +216,18 @@ def parse_context_var(context, variable_name):
         return context[variable_name[1:]]
     else:
         return variable_name
+
+
+class ObjDictModel(object):
+
+    def __getattr__(self, name):
+        return self.__dict__[name]
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+    def __getitem__(self, name):
+        return self.__dict__[name]
+
+    def __setitem__(self, name, value):
+        self.__dict__[name] = value
