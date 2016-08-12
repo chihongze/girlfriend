@@ -232,6 +232,32 @@ def workflow(options):
 gf_workflow -m myworkflow.py
 ```
 
+输出结果大致如下：
+
+```
+➜ /Users/chihongze/gftest > gf_workflow -m ./myworkflow.py
+2016-08-12 13:22:50,020 - girlfriend - INFO - 工作流开始执行，起始点为 'orm_query'
+2016-08-12 13:22:50,020 - girlfriend - INFO - 开始执行工作单元 orm_query [job]
+2016-08-12 13:22:50,023 - girlfriend - INFO - 工作单元 orm_query [job] 执行完毕
+2016-08-12 13:22:50,023 - girlfriend - INFO - 开始执行工作单元 print_table [job]
+------------------------------------------------用户表-------------------------------------------------
+
+
++----+-------+-------------------+
+| ID |  姓名 |        邮箱       |
++----+-------+-------------------+
+| 1  |  Sam  | chihz3800@163.com |
+| 2  | Peter |   peter@163.com   |
++----+-------+-------------------+
+
+
+
+2016-08-12 13:22:50,023 - girlfriend - INFO - 工作单元 print_table [job] 执行完毕
+2016-08-12 13:22:50,023 - girlfriend - INFO - 开始执行工作单元 write_excel [job]
+2016-08-12 13:22:50,042 - girlfriend - INFO - 工作单元 write_excel [job] 执行完毕
+2016-08-12 13:22:50,042 - girlfriend - INFO - 工作流成功执行完毕
+```
+
 大功告成！看看数据打印出来了没有？Excel生成了没有？另外，重点是，完成这个工作用了几分钟？我们竟然用删代码和填空的方式完成了一个程序！ :)
 
 如果你好奇这一切是如何发生的，那么请阅读下面的说明，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器等等。
