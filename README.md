@@ -1,6 +1,6 @@
 <div align="center">
 <h1>Girlfriend</h1>
-<img src="https://img.mengniang.org/common/thumb/2/2e/Alice_kami-sama_no_memo_chou.jpg/221px-Alice_kami-sama_no_memo_chou.jpg"/>
+<img src="cover.jpg"/>
 <p>
 <!-- build status -->
 <a href="https://travis-ci.org/chihongze/girlfriend"><img src="https://travis-ci.org/chihongze/girlfriend.svg?branch=master" alt="build status"/></a>
