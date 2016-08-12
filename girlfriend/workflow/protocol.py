@@ -357,7 +357,8 @@ class AbstractListener(object):
         "on_interrupt",
         "on_interrupt_now",
         "on_error",
-        "on_finish"
+        "on_finish",
+        "on_stop"
     )
 
     @classmethod
@@ -399,6 +400,11 @@ class AbstractListener(object):
         """
         pass
 
+    def on_stop(self, context):
+        """当工作流被人为终止时，执行此方法
+        """
+        pass
+
     def __repr__(self):
         return "<Workflow event listener:{class_name} @ {id}>".format(
             class_name=self.__class__.__name__,
@@ -436,6 +442,75 @@ class _WrappedFunctionListener(AbstractListener):
                 return event_handler
 
             setattr(self, event_name, event_handler_factory(func))
+
+
+class AbstractSessionCtrl(object):
+
+    """在girlfriend中，每次工作流的执行都可以看做是一次会话
+       通过向执行引擎传递会话控制对象，可以控制工作流行为以及
+       监控运行状况
+    """
+
+    __metaclass__ = ABCMeta
+
+    # 会话状态
+    STATUS_PREPARE = 0  # 正在准备执行
+
+    STATUS_RUNNING = 1  # 正在执行
+
+    STATUS_FINISHED = 2  # 执行正常完成
+
+    STATUS_EXCEPTION = 3  # 由于错误而终止
+
+    STATUS_STOPPED = 4  # 被人为终止
+
+    def __init__(self):
+        self._status = AbstractSessionCtrl.STATUS_PREPARE
+
+    @abstractproperty
+    def session_id(self):
+        """每次执行都会分配一个会话ID用以标记
+        """
+        pass
+
+    @property
+    def status(self):
+        """当前执行状态
+        """
+        return self._status
+
+    @abstractproperty
+    def result(self):
+        """执行结果
+        """
+        pass
+
+    @abstractproperty
+    def exc_info(self):
+        """异常信息，返回同sys.exc_info
+        """
+        pass
+
+    @abstractproperty
+    def current_unit(self):
+        """当前执行到的工作流单元
+        """
+        pass
+
+    @abstractmethod
+    def stop(self, stop_on=None):
+        """停止工作流
+           :param stop_on: 通过该参数来设定在哪个工作单元停止
+        """
+        pass
+
+    @abstractmethod
+    def mark_finished(self, result=None):
+        pass
+
+    @abstractmethod
+    def mark_exception(self, exc_info=None):
+        pass
 
 
 class Env(object):

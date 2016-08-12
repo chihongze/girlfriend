@@ -231,3 +231,30 @@ class ObjDictModel(object):
 
     def __setitem__(self, name, value):
         self.__dict__[name] = value
+
+
+class SafeOperation(object):
+
+    """包装一个对象进行安全操作，
+       像某些语言的安全操作符
+       避免None引用引发的错误
+       每年空指针错误带来的损失是十个亿啊，还是美元！同志们！
+    """
+
+    def __init__(self, obj):
+        self.__dict__["_SafeOperation__obj"] = obj
+
+    def __getattr__(self, attrname):
+        obj = self.__dict__["_SafeOperation__obj"]
+        if obj is None:
+            return self
+        return getattr(obj, attrname)
+
+    def __setattr__(self, attrname, value):
+        obj = self.__obj
+        if obj is None:
+            return
+        return setattr(obj, attrname, value)
+
+    def __call__(self, *args, **kwds):
+        return self

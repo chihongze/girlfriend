@@ -4,18 +4,21 @@
 """
 
 import sys
+import uuid
 import types
 import itertools
 from girlfriend.exception import (
     GirlFriendBizException,
     InvalidArgumentException,
-    UnknownWitchToExecuteException
+    UnknownWitchToExecuteException,
+    InvalidStatusException
 )
 from girlfriend.util.lang import (
     DelegateMeta,
     SequenceCollectionType,
     parse_context_var,
-    args2fields
+    args2fields,
+    SafeOperation
 )
 from girlfriend.util.logger import (
     create_logger,
@@ -32,7 +35,8 @@ from girlfriend.workflow.protocol import (
     OkEnd,
     ErrorEnd,
     BadRequestEnd,
-    AbstractListener
+    AbstractListener,
+    AbstractSessionCtrl
 )
 from girlfriend.plugin import plugin_manager
 
@@ -474,7 +478,8 @@ class Workflow(AbstractWorkflow):
                             break
                     else:
                         raise InvalidArgumentException(
-                            u"Fork单元 '{}' 必须指定一个有效的goto参数".format(unit.name))
+                            u"Fork单元 '{}' 必须使用一个有效的goto跳转到Join"
+                            .format(unit.name))
                 # 自动设置结束节点
                 if unit.end_point is None:
                     for i, next_unit in enumerate(
@@ -532,13 +537,17 @@ class Workflow(AbstractWorkflow):
             self._listeners.append(AbstractListener.wrap_function(event_funcs))
             return
 
-    def execute(self, args=None, start_point=None, end_point=None):
+    def execute(self, args=None, start_point=None, end_point=None, ctrl=None):
         """执行工作流
            :param start_point 工作流起始点，如果为None，
                               那么将从workflow_list第一个元素开始执行
            :param end_point   工作流结束点，如果为None，则按规定节点顺序结束
            :param args 运行时参数
+           :param ctrl 会话控制器
         """
+
+        ctrl = SafeOperation(ctrl)
+
         if start_point:
             start_unit = self._units[start_point]
         else:
@@ -566,9 +575,23 @@ class Workflow(AbstractWorkflow):
         current_unit = start_unit
         last_result = None
         goto = None
+        # 为会话控制器设置当前执行状态为RUNNING
+        ctrl.status = AbstractSessionCtrl.STATUS_RUNNING
         while True:
             ctx.current_unit = current_unit.name
             ctx.current_unittype = current_unit.unittype
+
+            # 当前正在执行中的单元
+            ctrl.current_unit = current_unit.name
+
+            # 判断停止标记
+            if ctrl.stop_mark:
+                if ctrl.stop_on is None or ctrl.stop_on == current_unit.name:
+                    # 执行所有的on_stop事件
+                    ctrl.status = AbstractSessionCtrl.STATUS_STOPPED
+                    print "hehehehe"
+                    self._execute_listeners("on_stop", ctx, listener_objects)
+                    raise WorkflowStoppedException(current_unit.name)
 
             # 进入新的Unit
             self._logger.info(u"开始执行工作单元 {} [{}]".format(
@@ -602,6 +625,7 @@ class Workflow(AbstractWorkflow):
                                             ctx, listener_objects)
                     self._execute_listeners("on_finish", ctx, listener_objects)
                     self._logger.info(u"工作流成功执行完毕")
+                    ctrl.mark_finished(result=current_unit.result)
                     return current_unit
             except InvalidArgumentException as e:
                 self._logger.exception(u"单元参数错误")
@@ -609,6 +633,7 @@ class Workflow(AbstractWorkflow):
                 self._execute_on_error_listeners(ctx,
                                                  exc_type, exc_value, tb,
                                                  listener_objects)
+                ctrl.mark_exception(exc_info=(exc_type, exc_value, tb))
                 return BadRequestEnd(msg=unicode(e))
             except Exception:
                 self._logger.exception(u"系统错误，工作流被迫中止")
@@ -616,6 +641,7 @@ class Workflow(AbstractWorkflow):
                 self._execute_on_error_listeners(ctx,
                                                  exc_type, exc_value, tb,
                                                  listener_objects)
+                ctrl.mark_exception(exc_info=(exc_type, exc_value, tb))
                 return ErrorEnd(exc_type, exc_value, tb)  # 返回错误的结果
             else:
                 # 执行完成事件
@@ -626,6 +652,7 @@ class Workflow(AbstractWorkflow):
                 if goto == "end":
                     self._execute_listeners("on_finish", ctx, listener_objects)
                     self._logger.info(u"工作流成功执行完毕")
+                    ctrl.mark_finished(result=last_result)
                     return OkEnd(result=last_result)  # 将最后一个单元的结果作为默认返回的结果
                 else:
                     current_unit = self._units[goto]  # 处理下一个单元
@@ -662,8 +689,88 @@ class Workflow(AbstractWorkflow):
         return listener_obj
 
 
+class SessionCtrl(AbstractSessionCtrl):
+
+    def __init__(self):
+        super(SessionCtrl, self).__init__()
+        self._session_id = uuid.uuid1().hex
+        self._result = None
+        self._exc_info = tuple()
+        self._current_unit = None
+        self._stop_mark = False
+        self._stop_on = None
+
+    @property
+    def session_id(self):
+        return self._session_id
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, status):
+        self._status = status
+
+    @property
+    def result(self):
+        if self._status != AbstractSessionCtrl.STATUS_FINISHED:
+            raise InvalidStatusException(u"会话没有完成，无法获取结果")
+        return self._result
+
+    @property
+    def exc_info(self):
+        if self._status != AbstractSessionCtrl.STATUS_EXCEPTION:
+            raise InvalidStatusException(u"会话未因错误终止，无法获取异常信息")
+        return self._exc_info
+
+    @property
+    def current_unit(self):
+        return self._current_unit
+
+    @current_unit.setter
+    def current_unit(self, current_unit):
+        self._current_unit = current_unit
+
+    @property
+    def stop_mark(self):
+        return self._stop_mark
+
+    @property
+    def stop_on(self):
+        return self._stop_on
+
+    def stop(self, stop_on=None):
+        self._stop_mark = True
+        self._stop_on = stop_on
+
+    def mark_finished(self, result=None):
+        """该方法用于标记工作流正常结束
+        """
+        self._result = result
+        self._status = AbstractSessionCtrl.STATUS_FINISHED
+
+    def mark_exception(self, exc_info=None):
+        """该方法用于标记异常终止
+        """
+        self._exc_info = exc_info
+        self._status = AbstractSessionCtrl.STATUS_EXCEPTION
+
+
 class WorkflowUnitExistedException(GirlFriendBizException):
 
     def __init__(self, unit_name):
         super(WorkflowUnitExistedException, self).__init__(
             u"工作单元 '{}' 已经存在".format(unit_name))
+
+
+class WorkflowStoppedException(GirlFriendBizException):
+
+    def __init__(self, stop_on):
+        self._stop_on = stop_on
+        super(WorkflowStoppedException, self).__init__(
+            u"工作流已终止在 '{}' 单元上".format(stop_on))
+
+    @property
+    def stop_on(self):
+        return self._stop_on

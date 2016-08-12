@@ -48,6 +48,18 @@ class AbstractFilePersistListener(AbstractListener):
             context.logger.debug(
                 "Dump ignore '{}'.".format(context.current_unit))
 
+    def on_stop(self, context):
+        """当工作流被终止时，对工作流进行dump"""
+
+        # 确保只dump主工作流的单元
+        if context.thread_id is None:
+            self._dump_context(context, STATUS_RUNNING)
+            context.logger.debug(u"Dump context to '{}' success.".format(
+                self._dump_to))
+        else:
+            context.logger.debug(
+                "Dump ignore '{}'.".format(context.current_unit))
+
     def _dump_context(self, context, status):
         with open(self._dump_to, "w") as f:
             self._dump_data_to_file({
