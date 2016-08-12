@@ -57,7 +57,7 @@ girlfriend处理的对象是工作流，用户可以开发自己的工作流，�
 
 <b>S2.</b> 在新建目录下运行`gf_test_data`命令，该命令用于自动生成测试数据，可以看到在当前目录下多了一个gftest.db文件，这是一个sqlite3的数据库文件，可以通过sqlite工具查看表结构。
 
-<b>S3.</b> 修改配置文件/.gf/gf.cfg，将刚才的sqlite文件添加为新的数据源，比如：
+<b>S3.</b> 修改配置文件$HOME/.gf/gf.cfg，将刚才的sqlite文件添加为新的数据源，比如：
 
 ```
 [db_test]
@@ -247,6 +247,7 @@ gf_workflow -m myworkflow.py
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter5.html" target="_blank">命令行下的执行器 —— gf\_workflow</a>
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter6.html" target="_blank">像做填空题一样写代码 —— gf\_gen</a>
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter18.html" target="_blank">上下文持久化与中断恢复</a>
+* 会话控制器、安全终止与Bootstrap类 (开发中)
 
 ### 内置插件
 
@@ -264,8 +265,8 @@ gf_workflow -m myworkflow.py
 
 ### 服务化和分布式
 
-* <a href="#">创建RESTFul服务节点</a>
-* <a href="#">构建分布式拓扑</a>
+* 创建RESTFul服务节点 (开发中)
+* 构建分布式拓扑 (开发中)
 
 ### 其它
 
