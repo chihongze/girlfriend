@@ -232,7 +232,7 @@ def workflow(options):
 gf_workflow -m myworkflow.py
 ```
 
-大功告成！看看数据打印出来了没有？Excel生成了没有？另外，重点是，完成这个工作用了几分钟？相比过去要少写多少代码？:)
+大功告成！看看数据打印出来了没有？Excel生成了没有？另外，重点是，完成这个工作用了几分钟？我们竟然用删代码和填空的方式完成了一个程序！ :)
 
 如果你好奇这一切是如何发生的，那么请阅读下面的说明，里面会详细介绍girlfriend工作流的构造、各种插件的使用、代码生成器等等。
 
@@ -271,5 +271,3 @@ gf_workflow -m myworkflow.py
 ### 其它
 
 * <a href="https://chihongze.gitbooks.io/girlfriend-tutorial-zh/content/chapter15.html" target="_blank">内置工作流 —— SQLReport</a>
-
-
